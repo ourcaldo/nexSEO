@@ -1,4 +1,4 @@
-modules = ["php", "postgresql-16"]
+modules = ["php-8.2", "bash"]
 [agent]
 expertMode = true
 
@@ -31,3 +31,4 @@ run = ["./validate-structure.sh"]
 
 [nix]
 channel = "stable-25_05"
+packages = ["php84", "php84Packages.composer"]
