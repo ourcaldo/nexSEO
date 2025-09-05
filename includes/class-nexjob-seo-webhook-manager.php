@@ -51,7 +51,7 @@ class NexJob_SEO_Webhook_Manager {
                 'name' => $name,
                 'description' => $description,
                 'webhook_token' => $webhook_token,
-                'status' => 'inactive',
+                'status' => 'active',
                 'created_at' => current_time('mysql'),
                 'updated_at' => current_time('mysql')
             ),
