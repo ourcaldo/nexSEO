@@ -258,7 +258,8 @@ class NexJob_SEO_Webhook_Processor {
             }
         }
         
-        // Handle taxonomies
+        // Handle taxonomies - collect all terms per taxonomy first
+        $taxonomy_terms = array();
         foreach ($mapped_data as $field_name => $field_value) {
             if (strpos($field_name, 'tax_') === 0) {
                 $taxonomy = substr($field_name, 4); // Remove 'tax_' prefix
@@ -272,8 +273,58 @@ class NexJob_SEO_Webhook_Processor {
                         $terms = array($field_value);
                     }
                     
-                    wp_set_post_terms($post_id, $terms, $taxonomy);
+                    // Initialize taxonomy array if not exists
+                    if (!isset($taxonomy_terms[$taxonomy])) {
+                        $taxonomy_terms[$taxonomy] = array();
+                    }
+                    
+                    // Process each term - create if doesn't exist
+                    foreach ($terms as $term_name) {
+                        if (empty($term_name)) continue;
+                        
+                        // Check if it's numeric (might be an ID)
+                        if (is_numeric($term_name)) {
+                            $existing_term = get_term((int)$term_name, $taxonomy);
+                            if ($existing_term && !is_wp_error($existing_term)) {
+                                $taxonomy_terms[$taxonomy][] = $existing_term->term_id;
+                                continue;
+                            }
+                        }
+                        
+                        // Try to find existing term by name or slug
+                        $existing_term = get_term_by('name', $term_name, $taxonomy);
+                        if (!$existing_term) {
+                            $existing_term = get_term_by('slug', sanitize_title($term_name), $taxonomy);
+                        }
+                        
+                        if ($existing_term) {
+                            $taxonomy_terms[$taxonomy][] = $existing_term->term_id;
+                        } else {
+                            // Create new term if it doesn't exist
+                            $new_term = wp_insert_term($term_name, $taxonomy);
+                            if (!is_wp_error($new_term)) {
+                                $taxonomy_terms[$taxonomy][] = $new_term['term_id'];
+                            } else {
+                                // If term already exists (race condition), try to get it
+                                if (strpos($new_term->get_error_code(), 'term_exists') !== false) {
+                                    $existing_term = get_term_by('name', $term_name, $taxonomy);
+                                    if ($existing_term) {
+                                        $taxonomy_terms[$taxonomy][] = $existing_term->term_id;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
+            }
+        }
+        
+        // Now assign all collected terms to their respective taxonomies
+        foreach ($taxonomy_terms as $taxonomy => $term_ids) {
+            if (!empty($term_ids)) {
+                // Remove duplicates and assign
+                $unique_term_ids = array_unique($term_ids);
+                wp_set_post_terms($post_id, $unique_term_ids, $taxonomy);
             }
         }
         
