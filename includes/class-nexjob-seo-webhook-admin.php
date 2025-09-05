@@ -645,7 +645,7 @@ class NexJob_SEO_Webhook_Admin {
      * AJAX: Fetch webhook data
      */
     public function ajax_fetch_webhook_data() {
-        if (!wp_verify_nonce($_POST['nonce'], 'webhook_ajax') || !current_user_can('manage_options')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'webhook_ajax') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
         
@@ -674,7 +674,7 @@ class NexJob_SEO_Webhook_Admin {
      * AJAX: Get webhook fields for post type
      */
     public function ajax_get_webhook_fields() {
-        if (!wp_verify_nonce($_POST['nonce'], 'webhook_ajax') || !current_user_can('manage_options')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'webhook_ajax') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
         
@@ -688,7 +688,7 @@ class NexJob_SEO_Webhook_Admin {
      * AJAX: Suggest field mappings
      */
     public function ajax_suggest_field_mappings() {
-        if (!wp_verify_nonce($_POST['nonce'], 'webhook_ajax') || !current_user_can('manage_options')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'webhook_ajax') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
         
@@ -705,7 +705,7 @@ class NexJob_SEO_Webhook_Admin {
      * AJAX: Process webhook data manually
      */
     public function ajax_process_webhook_data() {
-        if (!wp_verify_nonce($_POST['nonce'], 'webhook_ajax') || !current_user_can('manage_options')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'webhook_ajax') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
         
