@@ -1,0 +1,84 @@
+Problem
+
+The error:
+
+Warning: Undefined array key "nonce" in ...class-nexjob-seo-webhook-admin.php on line 617
+
+
+points to this part of your code:
+
+if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'webhook_ajax') || !current_user_can('manage_options')) {
+    wp_die('Unauthorized');
+}
+
+
+This happens because $_POST['nonce'] is sometimes not sent, so PHP complains when you try to access it directly.
+
+Looking at your JavaScript:
+
+$.post(ajaxurl, {
+    action: 'nexjob_fetch_webhook_data',
+    webhook_id: webhookId,
+    nonce: '<?php echo wp_create_nonce('webhook_ajax'); ?>'
+}, function(response) {
+    ...
+});
+
+
+You are sending a nonce field in AJAX, but the warning usually occurs when:
+
+Someone accesses the AJAX endpoint directly without sending nonce.
+
+Another AJAX call or form doesn’t include nonce.
+
+PHP version is 8+ (because PHP 8 triggers warnings for undefined array keys).
+
+Solution
+
+The safest way is to check if $_POST['nonce'] exists before using it, and avoid directly accessing the array key. PHP already has a neat function: filter_input or simply use isset().
+
+Update the AJAX nonce checks like this:
+
+$nonce = $_POST['nonce'] ?? ''; // Default to empty string if not set
+if (!wp_verify_nonce($nonce, 'webhook_ajax') || !current_user_can('manage_options')) {
+    wp_die('Unauthorized');
+}
+
+
+Do this in all AJAX functions that use $_POST['nonce']:
+
+public function ajax_fetch_webhook_data() {
+    $nonce = $_POST['nonce'] ?? '';
+    if (!wp_verify_nonce($nonce, 'webhook_ajax') || !current_user_can('manage_options')) {
+        wp_die('Unauthorized');
+    }
+    
+    $webhook_id = intval($_POST['webhook_id']);
+    $latest_data = $this->webhook_data->get_latest_unprocessed_data($webhook_id);
+    
+    if (!$latest_data) {
+        wp_send_json_error(array('message' => __('No data received yet. Send a POST request to the webhook URL.', 'nexjob-seo')));
+    }
+    
+    $parsed_data = $this->webhook_data->parse_webhook_data($latest_data->data);
+    
+    $html = '<div class="webhook-data-preview">';
+    $html .= '<h4>' . __('Latest Received Data:', 'nexjob-seo') . '</h4>';
+    $html .= '<pre style="background: #f9f9f9; padding: 10px; max-height: 300px; overflow: auto;">' . esc_html($latest_data->data) . '</pre>';
+    $html .= '<p><small>' . sprintf(__('Received: %s', 'nexjob-seo'), $latest_data->created_at) . '</small></p>';
+    $html .= '</div>';
+    
+    wp_send_json_success(array(
+        'html' => $html,
+        'fields' => $parsed_data['available_fields'] ?? array()
+    ));
+}
+
+
+✅ Using $_POST['nonce'] ?? '' ensures no undefined array key warning.
+
+Tip
+
+Anywhere you use $_POST['nonce'] or $_GET['nonce'], always use the null coalescing operator ?? '' in PHP 7+ or isset() in older PHP.
+
+This makes your plugin fully compatible with PHP 8+, which is stricter about undefined array keys.

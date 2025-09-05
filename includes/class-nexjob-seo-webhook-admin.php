@@ -614,7 +614,8 @@ class NexJob_SEO_Webhook_Admin {
         }
         
         // Handle GET actions
-        if (isset($_GET['action']) && isset($_GET['nonce']) && wp_verify_nonce($_GET['nonce'], 'webhook_action')) {
+        $get_nonce = $_GET['nonce'] ?? '';
+        if (isset($_GET['action']) && wp_verify_nonce($get_nonce, 'webhook_action')) {
             switch ($_GET['action']) {
                 case 'toggle_webhook_status':
                     $webhook_id = intval($_GET['webhook_id']);
@@ -645,7 +646,8 @@ class NexJob_SEO_Webhook_Admin {
      * AJAX: Fetch webhook data
      */
     public function ajax_fetch_webhook_data() {
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'webhook_ajax') || !current_user_can('manage_options')) {
+        $nonce = $_POST['nonce'] ?? '';
+        if (!wp_verify_nonce($nonce, 'webhook_ajax') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
         
@@ -674,7 +676,8 @@ class NexJob_SEO_Webhook_Admin {
      * AJAX: Get webhook fields for post type
      */
     public function ajax_get_webhook_fields() {
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'webhook_ajax') || !current_user_can('manage_options')) {
+        $nonce = $_POST['nonce'] ?? '';
+        if (!wp_verify_nonce($nonce, 'webhook_ajax') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
         
@@ -688,7 +691,8 @@ class NexJob_SEO_Webhook_Admin {
      * AJAX: Suggest field mappings
      */
     public function ajax_suggest_field_mappings() {
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'webhook_ajax') || !current_user_can('manage_options')) {
+        $nonce = $_POST['nonce'] ?? '';
+        if (!wp_verify_nonce($nonce, 'webhook_ajax') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
         
@@ -705,7 +709,8 @@ class NexJob_SEO_Webhook_Admin {
      * AJAX: Process webhook data manually
      */
     public function ajax_process_webhook_data() {
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'webhook_ajax') || !current_user_can('manage_options')) {
+        $nonce = $_POST['nonce'] ?? '';
+        if (!wp_verify_nonce($nonce, 'webhook_ajax') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
         
