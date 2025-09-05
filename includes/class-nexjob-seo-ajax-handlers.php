@@ -37,7 +37,8 @@ class NexJob_SEO_Ajax_Handlers {
      */
     public function ajax_clear_logs() {
         // Verify nonce and permissions
-        $nonce = $_POST['nonce'] ?? '';
+        if (!isset($_POST['nonce'])) wp_die('Missing nonce');
+        $nonce = $_POST['nonce'];
         if (!wp_verify_nonce($nonce, 'nexjob_logs') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
@@ -57,7 +58,8 @@ class NexJob_SEO_Ajax_Handlers {
      */
     public function ajax_get_logs() {
         // Verify nonce and permissions
-        $nonce = $_POST['nonce'] ?? '';
+        if (!isset($_POST['nonce'])) wp_die('Missing nonce');
+        $nonce = $_POST['nonce'];
         if (!wp_verify_nonce($nonce, 'nexjob_logs') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
@@ -160,7 +162,8 @@ class NexJob_SEO_Ajax_Handlers {
      */
     public function ajax_process_post() {
         // Verify nonce and permissions
-        $nonce = $_POST['nonce'] ?? '';
+        if (!isset($_POST['nonce'])) wp_die('Missing nonce');
+        $nonce = $_POST['nonce'];
         if (!wp_verify_nonce($nonce, 'nexjob_process_post') || !current_user_can('edit_posts')) {
             wp_die('Unauthorized');
         }
@@ -180,7 +183,8 @@ class NexJob_SEO_Ajax_Handlers {
      */
     public function ajax_get_stats() {
         // Verify nonce and permissions
-        $nonce = $_POST['nonce'] ?? '';
+        if (!isset($_POST['nonce'])) wp_die('Missing nonce');
+        $nonce = $_POST['nonce'];
         if (!wp_verify_nonce($nonce, 'nexjob_stats') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }

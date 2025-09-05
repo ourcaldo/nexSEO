@@ -579,8 +579,9 @@ class NexJob_SEO_Webhook_Admin {
         if (!current_user_can('manage_options')) return;
         
         // Create webhook
-        $webhook_nonce = $_POST['webhook_nonce'] ?? '';
-        if (isset($_POST['webhook_nonce']) && wp_verify_nonce($webhook_nonce, 'create_webhook')) {
+        if (isset($_POST['webhook_nonce'])) {
+            $webhook_nonce = $_POST['webhook_nonce'];
+            if (wp_verify_nonce($webhook_nonce, 'create_webhook')) {
             $name = sanitize_text_field($_POST['webhook_name']);
             $description = sanitize_textarea_field($_POST['webhook_description']);
             
@@ -594,11 +595,13 @@ class NexJob_SEO_Webhook_Admin {
                     echo '<div class="notice notice-error"><p>' . __('Failed to create webhook.', 'nexjob-seo') . '</p></div>';
                 });
             }
+            }
         }
         
         // Configure webhook
-        $webhook_config_nonce = $_POST['webhook_config_nonce'] ?? '';
-        if (isset($_POST['webhook_config_nonce']) && wp_verify_nonce($webhook_config_nonce, 'configure_webhook')) {
+        if (isset($_POST['webhook_config_nonce'])) {
+            $webhook_config_nonce = $_POST['webhook_config_nonce'];
+            if (wp_verify_nonce($webhook_config_nonce, 'configure_webhook')) {
             $webhook_id = intval($_POST['webhook_id']);
             $config = array(
                 'post_type' => sanitize_text_field($_POST['post_type']),
@@ -613,11 +616,13 @@ class NexJob_SEO_Webhook_Admin {
                 wp_redirect(add_query_arg('message', 'configured'));
                 exit;
             }
+            }
         }
         
         // Handle GET actions
-        $get_nonce = $_GET['nonce'] ?? '';
-        if (isset($_GET['action']) && wp_verify_nonce($get_nonce, 'webhook_action')) {
+        if (isset($_GET['action']) && isset($_GET['nonce'])) {
+            $get_nonce = $_GET['nonce'];
+            if (wp_verify_nonce($get_nonce, 'webhook_action')) {
             switch ($_GET['action']) {
                 case 'toggle_webhook_status':
                     $webhook_id = intval($_GET['webhook_id']);
@@ -641,6 +646,7 @@ class NexJob_SEO_Webhook_Admin {
                     wp_redirect(add_query_arg('message', 'token_regenerated'));
                     exit;
             }
+            }
         }
     }
     
@@ -648,7 +654,8 @@ class NexJob_SEO_Webhook_Admin {
      * AJAX: Fetch webhook data
      */
     public function ajax_fetch_webhook_data() {
-        $nonce = $_POST['nonce'] ?? '';
+        if (!isset($_POST['nonce'])) wp_die('Missing nonce');
+        $nonce = $_POST['nonce'];
         if (!wp_verify_nonce($nonce, 'webhook_ajax') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
@@ -678,7 +685,8 @@ class NexJob_SEO_Webhook_Admin {
      * AJAX: Get webhook fields for post type
      */
     public function ajax_get_webhook_fields() {
-        $nonce = $_POST['nonce'] ?? '';
+        if (!isset($_POST['nonce'])) wp_die('Missing nonce');
+        $nonce = $_POST['nonce'];
         if (!wp_verify_nonce($nonce, 'webhook_ajax') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
@@ -693,7 +701,8 @@ class NexJob_SEO_Webhook_Admin {
      * AJAX: Suggest field mappings
      */
     public function ajax_suggest_field_mappings() {
-        $nonce = $_POST['nonce'] ?? '';
+        if (!isset($_POST['nonce'])) wp_die('Missing nonce');
+        $nonce = $_POST['nonce'];
         if (!wp_verify_nonce($nonce, 'webhook_ajax') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
@@ -711,7 +720,8 @@ class NexJob_SEO_Webhook_Admin {
      * AJAX: Process webhook data manually
      */
     public function ajax_process_webhook_data() {
-        $nonce = $_POST['nonce'] ?? '';
+        if (!isset($_POST['nonce'])) wp_die('Missing nonce');
+        $nonce = $_POST['nonce'];
         if (!wp_verify_nonce($nonce, 'webhook_ajax') || !current_user_can('manage_options')) {
             wp_die('Unauthorized');
         }
