@@ -28,6 +28,9 @@ class NexJob_SEO_Webhook_Manager {
         $this->logger = $logger;
         $this->webhook_data = $webhook_data;
         $this->webhooks_table = $wpdb->prefix . 'nexjob_webhooks';
+        
+        // Ensure tables exist
+        NexJob_SEO_Webhook_Database::ensure_tables_exist();
     }
     
     /**

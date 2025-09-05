@@ -162,8 +162,20 @@ class NexJob_SEO_Settings {
         }
         
         // Sanitize required fields
-        if (isset($input['required_fields']) && is_array($input['required_fields'])) {
-            $sanitized['required_fields'] = array_map('sanitize_text_field', $input['required_fields']);
+        if (isset($input['required_fields'])) {
+            if (is_string($input['required_fields'])) {
+                // Convert textarea input to array
+                $fields = explode("\n", $input['required_fields']);
+                $fields = array_map('trim', $fields);
+                $fields = array_filter($fields); // Remove empty lines
+                $sanitized['required_fields'] = array_map('sanitize_text_field', $fields);
+            } elseif (is_array($input['required_fields'])) {
+                $sanitized['required_fields'] = array_map('sanitize_text_field', $input['required_fields']);
+            } else {
+                $sanitized['required_fields'] = array();
+            }
+        } else {
+            $sanitized['required_fields'] = array();
         }
         
         return wp_parse_args($sanitized, $this->settings);
@@ -240,7 +252,8 @@ class NexJob_SEO_Settings {
      */
     public function required_fields_callback() {
         $required_fields = $this->get('required_fields');
-        echo '<textarea name="' . self::OPTION_NAME . '[required_fields]" rows="4" cols="50">' . esc_textarea(implode("\n", $required_fields)) . '</textarea>';
-        echo '<p class="description">' . __('Required custom field keys (one per line).', 'nexjob-seo') . '</p>';
+        $fields_text = is_array($required_fields) ? implode("\n", $required_fields) : '';
+        echo '<textarea name="' . self::OPTION_NAME . '[required_fields]" rows="4" cols="50" placeholder="Enter field names (one per line)...">' . esc_textarea($fields_text) . '</textarea>';
+        echo '<p class="description">' . __('Required custom field keys (one per line). Leave empty if no required fields.', 'nexjob-seo') . '</p>';
     }
 }
