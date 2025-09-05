@@ -39,6 +39,7 @@ class NexJob_SEO_Webhook_Admin {
         add_action('wp_ajax_nexjob_fetch_webhook_data', array($this, 'ajax_fetch_webhook_data'));
         add_action('wp_ajax_nexjob_process_webhook_data', array($this, 'ajax_process_webhook_data'));
         add_action('wp_ajax_nexjob_get_webhook_fields', array($this, 'ajax_get_webhook_fields'));
+        add_action('wp_ajax_nexjob_get_wp_fields', array($this, 'ajax_get_wp_fields'));
         add_action('wp_ajax_nexjob_suggest_field_mappings', array($this, 'ajax_suggest_field_mappings'));
     }
     
@@ -429,6 +430,7 @@ class NexJob_SEO_Webhook_Admin {
                         $('#webhook-data-container').html(response.data.html);
                         // Update field options
                         updateWebhookFieldOptions(response.data.fields);
+                        updateWebhookFieldsFromData();
                     } else {
                         alert(response.data.message);
                     }
@@ -519,7 +521,7 @@ class NexJob_SEO_Webhook_Admin {
             // Update WordPress field options
             function updateWpFieldOptions(postType) {
                 $.post(ajaxurl, {
-                    action: 'nexjob_get_webhook_fields',
+                    action: 'nexjob_get_wp_fields',
                     post_type: postType,
                     nonce: '<?php echo wp_create_nonce('webhook_ajax'); ?>'
                 }, function(response) {
@@ -540,11 +542,30 @@ class NexJob_SEO_Webhook_Admin {
                 });
             }
             
+            // Update webhook field options after fetching data
+            function updateWebhookFieldsFromData() {
+                var webhookId = <?php echo intval($_GET['id'] ?? 0); ?>;
+                if (webhookId) {
+                    $.post(ajaxurl, {
+                        action: 'nexjob_get_webhook_fields',
+                        webhook_id: webhookId,
+                        nonce: '<?php echo wp_create_nonce('webhook_ajax'); ?>'
+                    }, function(response) {
+                        if (response.success) {
+                            updateWebhookFieldOptions(response.data.fields);
+                        }
+                    });
+                }
+            }
+            
             // Initialize with current post type
             var currentPostType = $('#post_type').val();
             if (currentPostType) {
                 updateWpFieldOptions(currentPostType);
             }
+            
+            // Initialize webhook fields on page load
+            updateWebhookFieldsFromData();
         });
         </script>
         
@@ -682,9 +703,25 @@ class NexJob_SEO_Webhook_Admin {
     }
     
     /**
-     * AJAX: Get webhook fields for post type
+     * AJAX: Get webhook fields from recent data
      */
     public function ajax_get_webhook_fields() {
+        if (!isset($_POST['nonce'])) wp_die('Missing nonce');
+        $nonce = $_POST['nonce'];
+        if (!wp_verify_nonce($nonce, 'webhook_ajax') || !current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+        
+        $webhook_id = intval($_POST['webhook_id']);
+        $fields = $this->webhook_data->get_field_suggestions($webhook_id);
+        
+        wp_send_json_success(array('fields' => $fields));
+    }
+    
+    /**
+     * AJAX: Get WordPress fields for post type
+     */
+    public function ajax_get_wp_fields() {
         if (!isset($_POST['nonce'])) wp_die('Missing nonce');
         $nonce = $_POST['nonce'];
         if (!wp_verify_nonce($nonce, 'webhook_ajax') || !current_user_can('manage_options')) {

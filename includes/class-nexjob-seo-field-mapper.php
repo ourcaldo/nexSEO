@@ -247,28 +247,73 @@ class NexJob_SEO_Field_Mapper {
      * Get common meta fields for a post type
      */
     private function get_common_meta_fields($post_type) {
+        global $wpdb;
         $meta_fields = array();
         
         // SEO meta fields (RankMath, Yoast, etc.)
-        $meta_fields['rank_math_title'] = array('label' => 'SEO Title', 'type' => 'text');
-        $meta_fields['rank_math_description'] = array('label' => 'SEO Description', 'type' => 'textarea');
-        $meta_fields['_yoast_wpseo_title'] = array('label' => 'Yoast SEO Title', 'type' => 'text');
-        $meta_fields['_yoast_wpseo_metadesc'] = array('label' => 'Yoast SEO Description', 'type' => 'textarea');
+        $meta_fields['rank_math_title'] = array('label' => 'SEO Title (RankMath)', 'type' => 'text');
+        $meta_fields['rank_math_description'] = array('label' => 'SEO Description (RankMath)', 'type' => 'textarea');
+        $meta_fields['_yoast_wpseo_title'] = array('label' => 'SEO Title (Yoast)', 'type' => 'text');
+        $meta_fields['_yoast_wpseo_metadesc'] = array('label' => 'SEO Description (Yoast)', 'type' => 'textarea');
+        
+        // Get actual meta fields used by this post type from database
+        $actual_meta_fields = $wpdb->get_results($wpdb->prepare(
+            "SELECT DISTINCT pm.meta_key 
+             FROM {$wpdb->postmeta} pm 
+             INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID 
+             WHERE p.post_type = %s 
+             AND pm.meta_key NOT LIKE '\_%' 
+             AND pm.meta_key NOT LIKE '%revision%'
+             AND pm.meta_value != ''
+             ORDER BY pm.meta_key",
+            $post_type
+        ));
+        
+        foreach ($actual_meta_fields as $meta_field) {
+            $key = $meta_field->meta_key;
+            $label = $this->format_meta_field_label($key);
+            $meta_fields[$key] = array('label' => $label, 'type' => 'text');
+        }
         
         // Custom post type specific fields
-        if ($post_type === 'lowongan-kerja') {
+        if ($post_type === 'lowongan-kerja' || $post_type === 'job') {
             $meta_fields['nexjob_nama_perusahaan'] = array('label' => 'Company Name', 'type' => 'text');
             $meta_fields['nexjob_lokasi_kota'] = array('label' => 'City Location', 'type' => 'text');
             $meta_fields['nexjob_gaji'] = array('label' => 'Salary', 'type' => 'text');
             $meta_fields['nexjob_tipe_kerja'] = array('label' => 'Work Type', 'type' => 'text');
+            $meta_fields['company_name'] = array('label' => 'Company Name', 'type' => 'text');
+            $meta_fields['job_location'] = array('label' => 'Job Location', 'type' => 'text');
+            $meta_fields['job_salary'] = array('label' => 'Job Salary', 'type' => 'text');
+            $meta_fields['job_type'] = array('label' => 'Job Type', 'type' => 'text');
+            $meta_fields['job_category'] = array('label' => 'Job Category', 'type' => 'text');
+            $meta_fields['application_deadline'] = array('label' => 'Application Deadline', 'type' => 'date');
         }
         
-        // Common custom fields
-        $meta_fields['custom_field_1'] = array('label' => 'Custom Field 1', 'type' => 'text');
-        $meta_fields['custom_field_2'] = array('label' => 'Custom Field 2', 'type' => 'text');
-        $meta_fields['custom_field_3'] = array('label' => 'Custom Field 3', 'type' => 'textarea');
+        // Common useful custom fields
+        $meta_fields['price'] = array('label' => 'Price', 'type' => 'text');
+        $meta_fields['address'] = array('label' => 'Address', 'type' => 'text');
+        $meta_fields['phone'] = array('label' => 'Phone', 'type' => 'text');
+        $meta_fields['email'] = array('label' => 'Email', 'type' => 'email');
+        $meta_fields['website'] = array('label' => 'Website', 'type' => 'url');
+        $meta_fields['description'] = array('label' => 'Additional Description', 'type' => 'textarea');
         
         return $meta_fields;
+    }
+    
+    /**
+     * Format meta field key into readable label
+     */
+    private function format_meta_field_label($key) {
+        // Remove common prefixes
+        $label = preg_replace('/^(nexjob_|job_|meta_|custom_)/', '', $key);
+        
+        // Replace underscores and hyphens with spaces
+        $label = str_replace(array('_', '-'), ' ', $label);
+        
+        // Capitalize words
+        $label = ucwords($label);
+        
+        return $label;
     }
     
     /**
