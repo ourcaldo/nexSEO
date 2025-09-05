@@ -419,23 +419,57 @@ class NexJob_SEO_Webhook_Admin {
                 var webhookId = $(this).data('webhook-id');
                 var button = $(this);
                 
-                button.prop('disabled', true).text('<?php _e('Fetching...', 'nexjob-seo'); ?>');
+                if (!webhookId) {
+                    alert('Invalid webhook ID');
+                    return;
+                }
                 
-                $.post(ajaxurl, {
-                    action: 'nexjob_fetch_webhook_data',
-                    webhook_id: webhookId,
-                    nonce: '<?php echo wp_create_nonce('webhook_ajax'); ?>'
-                }, function(response) {
-                    if (response.success) {
-                        $('#webhook-data-container').html(response.data.html);
-                        // Update field options
-                        updateWebhookFieldOptions(response.data.fields);
-                        updateWebhookFieldsFromData();
-                    } else {
-                        alert(response.data.message);
+                button.prop('disabled', true).text('<?php _e('Fetching...', 'nexjob-seo'); ?>');
+                console.log('Fetching data for webhook ID:', webhookId);
+                
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'nexjob_fetch_webhook_data',
+                        webhook_id: webhookId,
+                        nonce: '<?php echo wp_create_nonce('webhook_ajax'); ?>'
+                    },
+                    timeout: 30000, // 30 second timeout
+                    success: function(response) {
+                        console.log('AJAX Success Response:', response);
+                        
+                        if (response && response.success) {
+                            $('#webhook-data-container').html(response.data.html);
+                            
+                            // Update field options with the actual fields from response
+                            if (response.data.fields && response.data.fields.length > 0) {
+                                console.log('Webhook fields received:', response.data.fields);
+                                updateWebhookFieldOptions(response.data.fields);
+                            } else {
+                                console.log('No webhook fields in response or empty array');
+                                console.log('Response data:', response.data);
+                            }
+                            
+                            // Debug info
+                            if (response.data.debug_info) {
+                                console.log('Debug info:', response.data.debug_info);
+                            }
+                        } else {
+                            var errorMsg = response && response.data && response.data.message ? response.data.message : 'Unknown error occurred';
+                            alert('Error: ' + errorMsg);
+                            console.error('Fetch webhook data error:', response);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX Error:', {xhr: xhr, status: status, error: error});
+                        console.error('Response Text:', xhr.responseText);
+                        alert('Request failed: ' + error + ' (Status: ' + status + ')');
+                    },
+                    complete: function() {
+                        button.prop('disabled', false).text('<?php _e('Fetch Latest Data', 'nexjob-seo'); ?>');
+                        console.log('AJAX request completed');
                     }
-                }).always(function() {
-                    button.prop('disabled', false).text('<?php _e('Fetch Latest Data', 'nexjob-seo'); ?>');
                 });
             });
             
@@ -504,18 +538,29 @@ class NexJob_SEO_Webhook_Admin {
             
             // Update webhook field options
             function updateWebhookFieldOptions(fields) {
+                console.log('updateWebhookFieldOptions called with:', fields);
+                
+                if (!fields || fields.length === 0) {
+                    console.log('No fields provided to updateWebhookFieldOptions');
+                    return;
+                }
+                
                 $('.webhook-field-select').each(function() {
                     var currentValue = $(this).val();
-                    $(this).empty().append('<option value=""><?php _e('Select webhook field', 'nexjob-seo'); ?></option>');
+                    var $select = $(this);
+                    
+                    $select.empty().append('<option value=""><?php _e('Select webhook field', 'nexjob-seo'); ?></option>');
                     
                     fields.forEach(function(field) {
-                        $(this).append('<option value="' + field + '">' + field + '</option>');
-                    }.bind(this));
+                        $select.append('<option value="' + field + '">' + field + '</option>');
+                    });
                     
-                    if (currentValue) {
-                        $(this).val(currentValue);
+                    if (currentValue && fields.indexOf(currentValue) !== -1) {
+                        $select.val(currentValue);
                     }
-                }.bind(this));
+                    
+                    console.log('Updated select with', fields.length, 'options');
+                });
             }
             
             // Update WordPress field options
@@ -542,18 +587,24 @@ class NexJob_SEO_Webhook_Admin {
                 });
             }
             
-            // Update webhook field options after fetching data
-            function updateWebhookFieldsFromData() {
+            // Auto-load webhook fields on page load
+            function loadWebhookFieldsOnInit() {
                 var webhookId = <?php echo intval($_GET['id'] ?? 0); ?>;
                 if (webhookId) {
+                    // First try to get fields from existing data
                     $.post(ajaxurl, {
                         action: 'nexjob_get_webhook_fields',
                         webhook_id: webhookId,
                         nonce: '<?php echo wp_create_nonce('webhook_ajax'); ?>'
                     }, function(response) {
-                        if (response.success) {
+                        if (response.success && response.data.fields && response.data.fields.length > 0) {
                             updateWebhookFieldOptions(response.data.fields);
+                            console.log('Loaded webhook fields on init:', response.data.fields);
+                        } else {
+                            console.log('No existing webhook fields found, waiting for fetch');
                         }
+                    }).fail(function() {
+                        console.log('Failed to load webhook fields on init');
                     });
                 }
             }
@@ -565,7 +616,7 @@ class NexJob_SEO_Webhook_Admin {
             }
             
             // Initialize webhook fields on page load
-            updateWebhookFieldsFromData();
+            loadWebhookFieldsOnInit();
         });
         </script>
         
@@ -682,23 +733,45 @@ class NexJob_SEO_Webhook_Admin {
         }
         
         $webhook_id = intval($_POST['webhook_id']);
-        $latest_data = $this->webhook_data->get_latest_unprocessed_data($webhook_id);
         
-        if (!$latest_data) {
+        // Get latest data regardless of status (not just unprocessed)
+        $latest_data_records = $this->webhook_data->get_webhook_data($webhook_id, 1);
+        
+        if (empty($latest_data_records)) {
             wp_send_json_error(array('message' => __('No data received yet. Send a POST request to the webhook URL.', 'nexjob-seo')));
+            return;
         }
         
+        $latest_data = $latest_data_records[0];
         $parsed_data = $this->webhook_data->parse_webhook_data($latest_data->data);
+        
+        // Check for parsing errors
+        if (isset($parsed_data['error'])) {
+            wp_send_json_error(array('message' => 'Error parsing webhook data: ' . $parsed_data['error']));
+            return;
+        }
         
         $html = '<div class="webhook-data-preview">';
         $html .= '<h4>' . __('Latest Received Data:', 'nexjob-seo') . '</h4>';
         $html .= '<pre style="background: #f9f9f9; padding: 10px; max-height: 300px; overflow: auto;">' . esc_html($latest_data->data) . '</pre>';
-        $html .= '<p><small>' . sprintf(__('Received: %s', 'nexjob-seo'), $latest_data->created_at) . '</small></p>';
+        $html .= '<p><small>' . sprintf(__('Received: %s | Status: %s', 'nexjob-seo'), $latest_data->created_at, $latest_data->status) . '</small></p>';
+        
+        // Show available fields for debugging
+        if (!empty($parsed_data['available_fields'])) {
+            $html .= '<p><strong>Available fields:</strong> ' . implode(', ', $parsed_data['available_fields']) . '</p>';
+        }
+        
         $html .= '</div>';
         
         wp_send_json_success(array(
             'html' => $html,
-            'fields' => $parsed_data['available_fields'] ?? array()
+            'fields' => $parsed_data['available_fields'] ?? array(),
+            'debug_info' => array(
+                'data_id' => $latest_data->id,
+                'webhook_id' => $webhook_id,
+                'status' => $latest_data->status,
+                'field_count' => count($parsed_data['available_fields'] ?? array())
+            )
         ));
     }
     

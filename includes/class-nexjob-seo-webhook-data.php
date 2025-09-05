@@ -158,16 +158,28 @@ class NexJob_SEO_Webhook_Data {
         $data = json_decode($data_json, true);
         
         if (json_last_error() !== JSON_ERROR_NONE) {
-            return array('error' => 'Invalid JSON data');
+            $this->logger->log("JSON parsing error: " . json_last_error_msg(), 'error', null, null, array(
+                'data_json' => $data_json,
+                'json_error' => json_last_error_msg()
+            ));
+            return array('error' => 'Invalid JSON data: ' . json_last_error_msg());
         }
         
         // Flatten nested arrays for easier field mapping
         $flattened_data = $this->flatten_array($data);
+        $available_fields = array_keys($flattened_data);
+        
+        // Log the parsing results for debugging
+        $this->logger->log("Webhook data parsed successfully", 'info', null, null, array(
+            'original_data_keys' => array_keys($data),
+            'flattened_data_keys' => $available_fields,
+            'field_count' => count($available_fields)
+        ));
         
         return array(
             'original' => $data,
             'flattened' => $flattened_data,
-            'available_fields' => array_keys($flattened_data)
+            'available_fields' => $available_fields
         );
     }
     
