@@ -1,6 +1,6 @@
 # Overview
 
-NexJob SEO Automation Plugin is a WordPress plugin designed to automate SEO optimization tasks for job-related content. The plugin has been successfully refactored from a monolithic 1289-line single file into a clean, modular architecture with separate components for settings management, post processing, logging, cron management, and admin interfaces. It provides automated SEO title and description generation, slug optimization, and comprehensive logging capabilities.
+NexJob SEO Automation Plugin is a comprehensive WordPress plugin designed to automate SEO optimization tasks for job-related content and provide advanced webhook integration capabilities. The plugin has been successfully refactored from a monolithic 1289-line single file into a clean, modular architecture with 14 specialized components. It provides automated SEO title and description generation, slug optimization, comprehensive logging capabilities, and a powerful webhook system for external data integration and automatic post creation.
 
 # User Preferences
 
@@ -47,6 +47,40 @@ The system follows a modular WordPress plugin architecture with clear separation
 - Dedicated endpoints for asynchronous operations
 - Log management functionality
 - Real-time interface updates
+
+## Webhook System Components
+
+### Webhook Database Management
+- Custom database tables for webhook configurations and received data
+- Schema creation and maintenance utilities
+- Table status monitoring and health checks
+
+### Webhook Data Storage
+- Incoming POST data storage and management
+- Data parsing and field extraction capabilities
+- Status tracking for processed/unprocessed data
+
+### Webhook Manager
+- Webhook creation with unique URL generation
+- Token management and security handling
+- Configuration validation and status management
+
+### Field Mapper
+- Intelligent mapping of webhook data to WordPress fields
+- Support for core post fields, meta fields, and taxonomies
+- Auto-suggestion engine for field mappings
+
+### Webhook Processor
+- REST API endpoints for receiving POST requests
+- Automatic post creation from webhook data
+- Featured image handling from URLs
+- Error handling and logging integration
+
+### Webhook Admin Interface
+- Complete admin interface for webhook management
+- Real-time data fetching and configuration
+- Field mapping interface with auto-suggestions
+- Statistics and monitoring dashboard
 
 ## Design Patterns
 - **Single Responsibility Principle**: Each class handles one specific concern

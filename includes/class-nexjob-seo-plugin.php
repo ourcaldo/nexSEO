@@ -19,6 +19,13 @@ class NexJob_SEO_Plugin {
     private $admin;
     private $ajax_handlers;
     
+    // Webhook components
+    private $webhook_data;
+    private $webhook_manager;
+    private $field_mapper;
+    private $webhook_processor;
+    private $webhook_admin;
+    
     /**
      * Constructor
      */
@@ -43,10 +50,17 @@ class NexJob_SEO_Plugin {
         // Initialize cron manager with dependencies
         $this->cron_manager = new NexJob_SEO_Cron_Manager($this->settings, $this->logger, $this->post_processor);
         
+        // Initialize webhook components
+        $this->webhook_data = new NexJob_SEO_Webhook_Data($this->logger);
+        $this->webhook_manager = new NexJob_SEO_Webhook_Manager($this->logger, $this->webhook_data);
+        $this->field_mapper = new NexJob_SEO_Field_Mapper($this->logger);
+        $this->webhook_processor = new NexJob_SEO_Webhook_Processor($this->logger, $this->webhook_manager, $this->webhook_data, $this->field_mapper);
+        
         // Initialize admin interface with dependencies (only in admin)
         if (is_admin()) {
             $this->admin = new NexJob_SEO_Admin($this->settings, $this->logger, $this->post_processor, $this->cron_manager);
             $this->ajax_handlers = new NexJob_SEO_Ajax_Handlers($this->settings, $this->logger);
+            $this->webhook_admin = new NexJob_SEO_Webhook_Admin($this->logger, $this->webhook_manager, $this->webhook_data, $this->field_mapper, $this->webhook_processor);
         }
     }
     
@@ -69,6 +83,9 @@ class NexJob_SEO_Plugin {
         $logger = new NexJob_SEO_Logger();
         $logger->create_log_table();
         $logger->log('Plugin activated', 'info');
+        
+        // Create webhook database tables
+        NexJob_SEO_Webhook_Database::create_tables();
         
         // Initialize cron manager for activation
         $settings = new NexJob_SEO_Settings();
@@ -110,5 +127,25 @@ class NexJob_SEO_Plugin {
     
     public function get_admin() {
         return $this->admin;
+    }
+    
+    public function get_webhook_manager() {
+        return $this->webhook_manager;
+    }
+    
+    public function get_webhook_data() {
+        return $this->webhook_data;
+    }
+    
+    public function get_field_mapper() {
+        return $this->field_mapper;
+    }
+    
+    public function get_webhook_processor() {
+        return $this->webhook_processor;
+    }
+    
+    public function get_webhook_admin() {
+        return $this->webhook_admin;
     }
 }

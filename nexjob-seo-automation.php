@@ -29,6 +29,14 @@ require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-cron-manager.php
 require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-admin.php';
 require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-ajax-handlers.php';
 
+// Webhook classes
+require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-webhook-database.php';
+require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-webhook-data.php';
+require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-webhook-manager.php';
+require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-field-mapper.php';
+require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-webhook-processor.php';
+require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-webhook-admin.php';
+
 // Initialize the plugin
 function nexjob_seo_init() {
     new NexJob_SEO_Plugin();
