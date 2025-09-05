@@ -579,7 +579,8 @@ class NexJob_SEO_Webhook_Admin {
         if (!current_user_can('manage_options')) return;
         
         // Create webhook
-        if (isset($_POST['webhook_nonce']) && wp_verify_nonce($_POST['webhook_nonce'], 'create_webhook')) {
+        $webhook_nonce = $_POST['webhook_nonce'] ?? '';
+        if (isset($_POST['webhook_nonce']) && wp_verify_nonce($webhook_nonce, 'create_webhook')) {
             $name = sanitize_text_field($_POST['webhook_name']);
             $description = sanitize_textarea_field($_POST['webhook_description']);
             
@@ -596,7 +597,8 @@ class NexJob_SEO_Webhook_Admin {
         }
         
         // Configure webhook
-        if (isset($_POST['webhook_config_nonce']) && wp_verify_nonce($_POST['webhook_config_nonce'], 'configure_webhook')) {
+        $webhook_config_nonce = $_POST['webhook_config_nonce'] ?? '';
+        if (isset($_POST['webhook_config_nonce']) && wp_verify_nonce($webhook_config_nonce, 'configure_webhook')) {
             $webhook_id = intval($_POST['webhook_id']);
             $config = array(
                 'post_type' => sanitize_text_field($_POST['post_type']),
