@@ -164,24 +164,9 @@ class NexJob_SEO_Webhook_Database {
         $webhooks_table = $wpdb->prefix . 'nexjob_webhooks';
         $webhook_data_table = $wpdb->prefix . 'nexjob_webhook_data';
         
-        // Check if table exists by trying to select from it
-        $webhooks_exists = false;
-        $webhook_data_exists = false;
-        
-        // Suppress errors and check if tables exist
-        $suppress_errors = $wpdb->suppress_errors(true);
-        
-        $result1 = $wpdb->get_var("SELECT 1 FROM {$webhooks_table} LIMIT 1");
-        if ($wpdb->last_error === '') {
-            $webhooks_exists = true;
-        }
-        
-        $result2 = $wpdb->get_var("SELECT 1 FROM {$webhook_data_table} LIMIT 1");
-        if ($wpdb->last_error === '') {
-            $webhook_data_exists = true;
-        }
-        
-        $wpdb->suppress_errors($suppress_errors);
+        // Use MySQL SHOW TABLES syntax for WordPress/MySQL
+        $webhooks_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $webhooks_table)) === $webhooks_table;
+        $webhook_data_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $webhook_data_table)) === $webhook_data_table;
         
         return $webhooks_exists && $webhook_data_exists;
     }
