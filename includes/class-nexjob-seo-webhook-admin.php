@@ -614,7 +614,7 @@ class NexJob_SEO_Webhook_Admin {
         }
         
         // Handle GET actions
-        if (isset($_GET['action']) && wp_verify_nonce($_GET['nonce'], 'webhook_action')) {
+        if (isset($_GET['action']) && isset($_GET['nonce']) && wp_verify_nonce($_GET['nonce'], 'webhook_action')) {
             switch ($_GET['action']) {
                 case 'toggle_webhook_status':
                     $webhook_id = intval($_GET['webhook_id']);

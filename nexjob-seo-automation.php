@@ -4,9 +4,16 @@
  * Plugin URI: https://nexjob.com
  * Description: Automated SEO meta title, description, and slug generation for job posts with RankMath integration
  * Version: 1.1.0
+ * Requires at least: 5.0
+ * Tested up to: 6.4
+ * Requires PHP: 7.4
  * Author: NexJob Team
+ * Author URI: https://nexjob.com
  * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: nexjob-seo
+ * Domain Path: /languages
+ * Network: false
  */
 
 // Prevent direct access
