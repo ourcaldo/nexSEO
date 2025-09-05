@@ -325,6 +325,15 @@ class NexJob_SEO_Webhook_Processor {
                 // Remove duplicates and assign
                 $unique_term_ids = array_unique($term_ids);
                 wp_set_post_terms($post_id, $unique_term_ids, $taxonomy);
+                
+                // For categories, explicitly remove the default "Uncategorized" if we assigned custom categories
+                if ($taxonomy === 'category') {
+                    $default_category_id = get_option('default_category');
+                    if ($default_category_id && !in_array($default_category_id, $unique_term_ids)) {
+                        // Remove default category since we have custom categories
+                        wp_remove_object_terms($post_id, (int)$default_category_id, 'category');
+                    }
+                }
             }
         }
         
