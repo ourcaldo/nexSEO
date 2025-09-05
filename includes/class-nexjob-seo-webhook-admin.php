@@ -688,11 +688,31 @@ class NexJob_SEO_Webhook_Admin {
             $webhook_config_nonce = $_POST['webhook_config_nonce'];
             if (wp_verify_nonce($webhook_config_nonce, 'configure_webhook')) {
             $webhook_id = intval($_POST['webhook_id']);
+            // Debug: Log how many field mappings were submitted
+            error_log('NexJob Debug: Field mappings submitted: ' . count($_POST['field_mappings'] ?? array()));
+            error_log('NexJob Debug: Field mappings data: ' . print_r($_POST['field_mappings'] ?? array(), true));
+            
+            // Sanitize field mappings
+            $field_mappings = array();
+            if (isset($_POST['field_mappings']) && is_array($_POST['field_mappings'])) {
+                foreach ($_POST['field_mappings'] as $index => $mapping) {
+                    if (is_array($mapping) && !empty($mapping['webhook_field']) && !empty($mapping['wp_field'])) {
+                        $field_mappings[$index] = array(
+                            'webhook_field' => sanitize_text_field($mapping['webhook_field'] ?? ''),
+                            'wp_field' => sanitize_text_field($mapping['wp_field'] ?? ''),
+                            'default_value' => sanitize_textarea_field($mapping['default_value'] ?? '')
+                        );
+                    }
+                }
+            }
+            
+            error_log('NexJob Debug: Field mappings processed: ' . count($field_mappings));
+            
             $config = array(
                 'post_type' => sanitize_text_field($_POST['post_type']),
                 'default_status' => sanitize_text_field($_POST['default_status']),
                 'auto_create' => isset($_POST['auto_create']),
-                'field_mappings' => $_POST['field_mappings'] ?? array()
+                'field_mappings' => $field_mappings
             );
             
             $result = $this->webhook_manager->update_webhook_config($webhook_id, $config);
