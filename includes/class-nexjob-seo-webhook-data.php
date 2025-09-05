@@ -79,7 +79,7 @@ class NexJob_SEO_Webhook_Data {
             "SELECT * FROM {$this->webhook_data_table} 
              WHERE webhook_id = %d 
              ORDER BY created_at DESC 
-             LIMIT %d OFFSET %d",
+             LIMIT %d, %d",
             $webhook_id, $limit, $offset
         ));
     }
