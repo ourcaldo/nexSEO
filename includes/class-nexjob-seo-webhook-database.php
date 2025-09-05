@@ -58,9 +58,15 @@ class NexJob_SEO_Webhook_Database {
             FOREIGN KEY (webhook_id) REFERENCES {$webhooks_table} (id) ON DELETE CASCADE
         ) $charset_collate;";
         
+        // Use static variable to prevent multiple creation attempts
+        static $tables_created = false;
+        if ($tables_created) {
+            return;
+        }
+        
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         
-        // Create webhooks table first
+        // Create webhooks table first (using dbDelta which handles IF NOT EXISTS)
         dbDelta($webhooks_sql);
         
         // Create webhook data table without foreign key constraint
@@ -83,8 +89,13 @@ class NexJob_SEO_Webhook_Database {
         
         dbDelta($webhook_data_sql_no_fk);
         
-        // Log table creation success
-        error_log('NexJob SEO: Database tables created successfully');
+        $tables_created = true;
+        
+        // Log table creation success only once
+        if (!get_option('nexjob_seo_tables_created')) {
+            error_log('NexJob SEO: Database tables created successfully');
+            update_option('nexjob_seo_tables_created', true);
+        }
         
         // Log table creation
         if (class_exists('NexJob_SEO_Logger')) {
@@ -117,20 +128,27 @@ class NexJob_SEO_Webhook_Database {
      * Force create tables if they don't exist
      */
     public static function ensure_tables_exist() {
+        // Use static variable to prevent multiple calls in same request
+        static $tables_checked = false;
+        if ($tables_checked) {
+            return true;
+        }
+        
         global $wpdb;
         
         $webhooks_table = $wpdb->prefix . 'nexjob_webhooks';
         $webhook_data_table = $wpdb->prefix . 'nexjob_webhook_data';
         
-        // Check if tables exist
-        $webhooks_exists = $wpdb->get_var("SHOW TABLES LIKE '{$webhooks_table}'") === $webhooks_table;
-        $webhook_data_exists = $wpdb->get_var("SHOW TABLES LIKE '{$webhook_data_table}'") === $webhook_data_table;
+        // Check if tables exist using proper WordPress method
+        $webhooks_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $webhooks_table)) === $webhooks_table;
+        $webhook_data_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $webhook_data_table)) === $webhook_data_table;
         
         if (!$webhooks_exists || !$webhook_data_exists) {
             self::create_tables();
         }
         
-        return $webhooks_exists && $webhook_data_exists;
+        $tables_checked = true;
+        return true;
     }
     
     /**
