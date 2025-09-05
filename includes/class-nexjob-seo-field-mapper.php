@@ -240,6 +240,13 @@ class NexJob_SEO_Field_Mapper {
             );
         }
         
+        $this->logger->log("Retrieved WordPress fields for post type", 'info', null, null, array(
+            'post_type' => $post_type,
+            'total_fields' => count($fields),
+            'meta_fields' => count($common_meta_fields),
+            'field_keys' => array_keys($fields)
+        ));
+        
         return $fields;
     }
     

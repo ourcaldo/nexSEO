@@ -565,25 +565,47 @@ class NexJob_SEO_Webhook_Admin {
             
             // Update WordPress field options
             function updateWpFieldOptions(postType) {
+                console.log('updateWpFieldOptions called with post type:', postType);
+                
+                if (!postType) {
+                    console.log('No post type provided');
+                    return;
+                }
+                
                 $.post(ajaxurl, {
                     action: 'nexjob_get_wp_fields',
                     post_type: postType,
                     nonce: '<?php echo wp_create_nonce('webhook_ajax'); ?>'
                 }, function(response) {
-                    if (response.success) {
+                    console.log('WP fields response:', response);
+                    
+                    if (response.success && response.data && response.data.fields) {
                         $('.wp-field-select').each(function() {
                             var currentValue = $(this).val();
-                            $(this).empty().append('<option value=""><?php _e('Select WordPress field', 'nexjob-seo'); ?></option>');
+                            var $select = $(this);
                             
+                            $select.empty().append('<option value=""><?php _e('Select WordPress field', 'nexjob-seo'); ?></option>');
+                            
+                            // Safe iteration with null checks
                             $.each(response.data.fields, function(key, field) {
-                                $(this).append('<option value="' + key + '">' + field.label + '</option>');
-                            }.bind(this));
+                                if (field && field.label && typeof field.label === 'string') {
+                                    $select.append('<option value="' + key + '">' + field.label + '</option>');
+                                } else if (typeof field === 'string') {
+                                    $select.append('<option value="' + key + '">' + field + '</option>');
+                                }
+                            });
                             
-                            if (currentValue) {
-                                $(this).val(currentValue);
+                            if (currentValue && $select.find('option[value="' + currentValue + '"]').length > 0) {
+                                $select.val(currentValue);
                             }
-                        }.bind(this));
+                            
+                            console.log('Updated WP field select with', $select.find('option').length - 1, 'options');
+                        });
+                    } else {
+                        console.error('Invalid WP fields response:', response);
                     }
+                }).fail(function(xhr, status, error) {
+                    console.error('Failed to load WP fields:', error);
                 });
             }
             
