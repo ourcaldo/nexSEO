@@ -590,22 +590,11 @@ class NexJob_SEO_Webhook_Admin {
             // Auto-load webhook fields on page load
             function loadWebhookFieldsOnInit() {
                 var webhookId = <?php echo intval($_GET['id'] ?? 0); ?>;
+                console.log('Page loaded with webhook ID:', webhookId);
+                
                 if (webhookId) {
-                    // First try to get fields from existing data
-                    $.post(ajaxurl, {
-                        action: 'nexjob_get_webhook_fields',
-                        webhook_id: webhookId,
-                        nonce: '<?php echo wp_create_nonce('webhook_ajax'); ?>'
-                    }, function(response) {
-                        if (response.success && response.data.fields && response.data.fields.length > 0) {
-                            updateWebhookFieldOptions(response.data.fields);
-                            console.log('Loaded webhook fields on init:', response.data.fields);
-                        } else {
-                            console.log('No existing webhook fields found, waiting for fetch');
-                        }
-                    }).fail(function() {
-                        console.log('Failed to load webhook fields on init');
-                    });
+                    // Automatically fetch the latest data on page load
+                    $('#fetch-webhook-data').click();
                 }
             }
             
@@ -734,11 +723,16 @@ class NexJob_SEO_Webhook_Admin {
         
         $webhook_id = intval($_POST['webhook_id']);
         
+        // Debug: Log the webhook ID we're searching for
+        error_log("AJAX fetch webhook data - searching for webhook_id: " . $webhook_id);
+        
         // Get latest data regardless of status (not just unprocessed)
-        $latest_data_records = $this->webhook_data->get_webhook_data($webhook_id, 1);
+        $latest_data_records = $this->webhook_data->get_webhook_data($webhook_id, 1, 0);
+        
+        error_log("Found webhook records: " . count($latest_data_records));
         
         if (empty($latest_data_records)) {
-            wp_send_json_error(array('message' => __('No data received yet. Send a POST request to the webhook URL.', 'nexjob-seo')));
+            wp_send_json_error(array('message' => __('No data received yet. Send a POST request to the webhook URL.', 'nexjob-seo') . " (Searched for webhook_id: $webhook_id)"));
             return;
         }
         

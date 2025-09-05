@@ -75,13 +75,23 @@ class NexJob_SEO_Webhook_Data {
     public function get_webhook_data($webhook_id, $limit = 10, $offset = 0) {
         global $wpdb;
         
-        return $wpdb->get_results($wpdb->prepare(
+        $results = $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM {$this->webhook_data_table} 
              WHERE webhook_id = %d 
              ORDER BY created_at DESC 
-             LIMIT %d, %d",
+             LIMIT %d OFFSET %d",
             $webhook_id, $limit, $offset
         ));
+        
+        $this->logger->log("Queried webhook data", 'info', null, null, array(
+            'webhook_id' => $webhook_id,
+            'limit' => $limit,
+            'offset' => $offset,
+            'found_records' => count($results),
+            'table_name' => $this->webhook_data_table
+        ));
+        
+        return $results;
     }
     
     /**
