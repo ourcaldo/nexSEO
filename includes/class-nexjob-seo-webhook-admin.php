@@ -405,6 +405,9 @@ class NexJob_SEO_Webhook_Admin {
         <script>
         jQuery(document).ready(function($) {
             var mappingIndex = <?php echo count($existing_mappings ?? array()); ?>;
+            var latestWebhookFields = [];
+            var currentPostType = $('#post_type').val() || '';
+            var wpFieldsData = null; // Store WP fields data once
             
             // Copy webhook URL
             $('.copy-webhook-url').click(function() {
@@ -435,23 +438,24 @@ class NexJob_SEO_Webhook_Admin {
                         webhook_id: webhookId,
                         nonce: '<?php echo wp_create_nonce('webhook_ajax'); ?>'
                     },
-                    timeout: 30000, // 30 second timeout
+                    timeout: 30000,
                     success: function(response) {
                         console.log('AJAX Success Response:', response);
                         
                         if (response && response.success) {
                             $('#webhook-data-container').html(response.data.html);
                             
-                            // Update field options with the actual fields from response
+                            // Update ALL webhook field dropdowns with fresh data
                             if (response.data.fields && response.data.fields.length > 0) {
-                                console.log('Webhook fields received:', response.data.fields);
-                                updateWebhookFieldOptions(response.data.fields);
+                                console.log('Fresh webhook fields received:', response.data.fields);
+                                latestWebhookFields = response.data.fields;
+                                updateAllWebhookFieldDropdowns();
                             } else {
-                                console.log('No webhook fields in response or empty array');
-                                console.log('Response data:', response.data);
+                                console.log('No webhook fields in response');
+                                latestWebhookFields = [];
+                                updateAllWebhookFieldDropdowns();
                             }
                             
-                            // Debug info
                             if (response.data.debug_info) {
                                 console.log('Debug info:', response.data.debug_info);
                             }
@@ -476,8 +480,9 @@ class NexJob_SEO_Webhook_Admin {
             // Post type change
             $('#post_type').change(function() {
                 var postType = $(this).val();
+                currentPostType = postType;
                 if (postType) {
-                    updateWpFieldOptions(postType);
+                    loadWpFieldsData(postType);
                 }
             });
             
@@ -495,7 +500,13 @@ class NexJob_SEO_Webhook_Admin {
                     '<button type="button" class="button remove-mapping"><?php _e('Remove', 'nexjob-seo'); ?></button>' +
                     '</div>';
                 
-                $('#field-mappings').append(html);
+                var $newRow = $(html);
+                $('#field-mappings').append($newRow);
+                
+                // Populate the new row with currently available data
+                populateWebhookFieldSelect($newRow.find('.webhook-field-select'));
+                populateWpFieldSelect($newRow.find('.wp-field-select'));
+                
                 mappingIndex++;
             });
             
@@ -536,39 +547,31 @@ class NexJob_SEO_Webhook_Admin {
                 });
             });
             
-            // Update webhook field options
-            function updateWebhookFieldOptions(fields) {
-                console.log('updateWebhookFieldOptions called with:', fields);
-                
-                if (!fields || fields.length === 0) {
-                    console.log('No fields provided to updateWebhookFieldOptions');
-                    return;
-                }
-                
+            // Update all webhook field dropdowns with latest fields
+            function updateAllWebhookFieldDropdowns() {
                 $('.webhook-field-select').each(function() {
-                    var currentValue = $(this).val();
-                    var $select = $(this);
-                    
-                    $select.empty().append('<option value=""><?php _e('Select webhook field', 'nexjob-seo'); ?></option>');
-                    
-                    fields.forEach(function(field) {
-                        $select.append('<option value="' + field + '">' + field + '</option>');
-                    });
-                    
-                    if (currentValue && fields.indexOf(currentValue) !== -1) {
-                        $select.val(currentValue);
-                    }
-                    
-                    console.log('Updated select with', fields.length, 'options');
+                    populateWebhookFieldSelect($(this));
                 });
+                console.log('Updated all webhook dropdowns with', latestWebhookFields.length, 'fields');
             }
             
-            // Update WordPress field options
-            function updateWpFieldOptions(postType) {
-                console.log('updateWpFieldOptions called with post type:', postType);
+            // Populate a single webhook field dropdown
+            function populateWebhookFieldSelect($select) {
+                var currentValue = $select.val();
+                $select.empty().append('<option value=""><?php _e('Select webhook field', 'nexjob-seo'); ?></option>');
                 
+                latestWebhookFields.forEach(function(field) {
+                    $select.append('<option value="' + field + '">' + field + '</option>');
+                });
+                
+                if (currentValue && latestWebhookFields.indexOf(currentValue) !== -1) {
+                    $select.val(currentValue);
+                }
+            }
+            
+            // Load WordPress fields data once for current post type
+            function loadWpFieldsData(postType) {
                 if (!postType) {
-                    console.log('No post type provided');
                     return;
                 }
                 
@@ -580,54 +583,53 @@ class NexJob_SEO_Webhook_Admin {
                     console.log('WP fields response:', response);
                     
                     if (response.success && response.data && response.data.fields) {
-                        $('.wp-field-select').each(function() {
-                            var currentValue = $(this).val();
-                            var $select = $(this);
-                            
-                            $select.empty().append('<option value=""><?php _e('Select WordPress field', 'nexjob-seo'); ?></option>');
-                            
-                            // Safe iteration with null checks
-                            $.each(response.data.fields, function(key, field) {
-                                if (field && field.label && typeof field.label === 'string') {
-                                    $select.append('<option value="' + key + '">' + field.label + '</option>');
-                                } else if (typeof field === 'string') {
-                                    $select.append('<option value="' + key + '">' + field + '</option>');
-                                }
-                            });
-                            
-                            if (currentValue && $select.find('option[value="' + currentValue + '"]').length > 0) {
-                                $select.val(currentValue);
-                            }
-                            
-                            console.log('Updated WP field select with', $select.find('option').length - 1, 'options');
-                        });
+                        wpFieldsData = response.data.fields;
+                        updateAllWpFieldDropdowns();
+                        console.log('Loaded WP fields data for', postType);
                     } else {
                         console.error('Invalid WP fields response:', response);
+                        wpFieldsData = null;
                     }
                 }).fail(function(xhr, status, error) {
                     console.error('Failed to load WP fields:', error);
+                    wpFieldsData = null;
                 });
             }
             
-            // Auto-load webhook fields on page load
-            function loadWebhookFieldsOnInit() {
-                var webhookId = <?php echo intval($_GET['id'] ?? 0); ?>;
-                console.log('Page loaded with webhook ID:', webhookId);
+            // Update all WordPress field dropdowns
+            function updateAllWpFieldDropdowns() {
+                $('.wp-field-select').each(function() {
+                    populateWpFieldSelect($(this));
+                });
+                console.log('Updated all WP field dropdowns');
+            }
+            
+            // Populate a single WordPress field dropdown
+            function populateWpFieldSelect($select) {
+                if (!wpFieldsData) {
+                    return;
+                }
                 
-                if (webhookId) {
-                    // Automatically fetch the latest data on page load
-                    $('#fetch-webhook-data').click();
+                var currentValue = $select.val();
+                $select.empty().append('<option value=""><?php _e('Select WordPress field', 'nexjob-seo'); ?></option>');
+                
+                $.each(wpFieldsData, function(key, field) {
+                    if (field && field.label && typeof field.label === 'string') {
+                        $select.append('<option value="' + key + '">' + field.label + '</option>');
+                    } else if (typeof field === 'string') {
+                        $select.append('<option value="' + key + '">' + field + '</option>');
+                    }
+                });
+                
+                if (currentValue && $select.find('option[value="' + currentValue + '"]').length > 0) {
+                    $select.val(currentValue);
                 }
             }
             
-            // Initialize with current post type
-            var currentPostType = $('#post_type').val();
+            // Initialize WordPress fields for current post type
             if (currentPostType) {
-                updateWpFieldOptions(currentPostType);
+                loadWpFieldsData(currentPostType);
             }
-            
-            // Initialize webhook fields on page load
-            loadWebhookFieldsOnInit();
         });
         </script>
         
