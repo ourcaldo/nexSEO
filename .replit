@@ -1,4 +1,4 @@
-modules = ["php"]
+modules = ["php", "postgresql-16"]
 [agent]
 expertMode = true
 
@@ -28,3 +28,6 @@ outputType = "console"
 [deployment]
 deploymentTarget = "vm"
 run = ["./validate-structure.sh"]
+
+[nix]
+channel = "stable-25_05"

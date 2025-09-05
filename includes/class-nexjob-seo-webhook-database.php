@@ -58,16 +58,34 @@ class NexJob_SEO_Webhook_Database {
             FOREIGN KEY (webhook_id) REFERENCES {$webhooks_table} (id) ON DELETE CASCADE
         ) $charset_collate;";
         
-        // Use static variable to prevent multiple creation attempts
-        static $tables_created = false;
-        if ($tables_created) {
+        // Check if tables already exist first - DO NOT CREATE IF THEY EXIST
+        if (self::tables_exist()) {
             return;
         }
         
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         
-        // Create webhooks table first (using dbDelta which handles IF NOT EXISTS)
-        dbDelta($webhooks_sql);
+        // Remove the UNIQUE KEY line that's causing duplicate key errors
+        $webhooks_sql_clean = "CREATE TABLE IF NOT EXISTS {$webhooks_table} (
+            id int(11) NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            description text DEFAULT NULL,
+            webhook_token varchar(100) NOT NULL UNIQUE,
+            status enum('active', 'inactive') DEFAULT 'inactive',
+            post_type varchar(50) DEFAULT NULL,
+            field_mappings longtext DEFAULT NULL,
+            default_status varchar(20) DEFAULT 'draft',
+            auto_create tinyint(1) DEFAULT 0,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY status (status),
+            KEY post_type (post_type),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+        
+        // Create webhooks table
+        dbDelta($webhooks_sql_clean);
         
         // Create webhook data table without foreign key constraint
         $webhook_data_sql_no_fk = "CREATE TABLE IF NOT EXISTS {$webhook_data_table} (
@@ -89,13 +107,7 @@ class NexJob_SEO_Webhook_Database {
         
         dbDelta($webhook_data_sql_no_fk);
         
-        $tables_created = true;
-        
-        // Log table creation success only once
-        if (!get_option('nexjob_seo_tables_created')) {
-            error_log('NexJob SEO: Database tables created successfully');
-            update_option('nexjob_seo_tables_created', true);
-        }
+        error_log('NexJob SEO: Database tables created successfully');
         
         // Log table creation
         if (class_exists('NexJob_SEO_Logger')) {
@@ -134,16 +146,8 @@ class NexJob_SEO_Webhook_Database {
             return true;
         }
         
-        global $wpdb;
-        
-        $webhooks_table = $wpdb->prefix . 'nexjob_webhooks';
-        $webhook_data_table = $wpdb->prefix . 'nexjob_webhook_data';
-        
-        // Check if tables exist using proper WordPress method
-        $webhooks_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $webhooks_table)) === $webhooks_table;
-        $webhook_data_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $webhook_data_table)) === $webhook_data_table;
-        
-        if (!$webhooks_exists || !$webhook_data_exists) {
+        // Only create tables if they don't exist
+        if (!self::tables_exist()) {
             self::create_tables();
         }
         
@@ -160,8 +164,24 @@ class NexJob_SEO_Webhook_Database {
         $webhooks_table = $wpdb->prefix . 'nexjob_webhooks';
         $webhook_data_table = $wpdb->prefix . 'nexjob_webhook_data';
         
-        $webhooks_exists = $wpdb->get_var("SHOW TABLES LIKE '{$webhooks_table}'") === $webhooks_table;
-        $webhook_data_exists = $wpdb->get_var("SHOW TABLES LIKE '{$webhook_data_table}'") === $webhook_data_table;
+        // Check if table exists by trying to select from it
+        $webhooks_exists = false;
+        $webhook_data_exists = false;
+        
+        // Suppress errors and check if tables exist
+        $suppress_errors = $wpdb->suppress_errors(true);
+        
+        $result1 = $wpdb->get_var("SELECT 1 FROM {$webhooks_table} LIMIT 1");
+        if ($wpdb->last_error === '') {
+            $webhooks_exists = true;
+        }
+        
+        $result2 = $wpdb->get_var("SELECT 1 FROM {$webhook_data_table} LIMIT 1");
+        if ($wpdb->last_error === '') {
+            $webhook_data_exists = true;
+        }
+        
+        $wpdb->suppress_errors($suppress_errors);
         
         return $webhooks_exists && $webhook_data_exists;
     }
