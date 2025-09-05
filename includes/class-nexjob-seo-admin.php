@@ -47,13 +47,15 @@ class NexJob_SEO_Admin {
      * Add admin menu pages
      */
     public function add_admin_menu() {
-        // Main menu page
-        add_options_page(
+        // Main menu page - Create standalone top-level menu
+        add_menu_page(
             __('NexJob SEO Automation', 'nexjob-seo'),
             __('NexJob SEO', 'nexjob-seo'),
             'manage_options',
             'nexjob-seo',
-            array($this, 'admin_page')
+            array($this, 'admin_page'),
+            'dashicons-search',
+            30
         );
         
         // Settings submenu
