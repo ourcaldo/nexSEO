@@ -401,49 +401,19 @@ class NexJob_SEO_Automation_Admin {
                                 </tr>
                                 <tr>
                                     <th scope="row">
-                                        <label for="font_size"><?php _e('Font Size', 'nexjob-seo'); ?></label>
+                                        <label for="font_color"><?php _e('Text Style', 'nexjob-seo'); ?></label>
                                     </th>
                                     <td>
-                                        <input type="number" id="font_size" name="font_size" value="<?php echo esc_attr($automation->font_size ?? 48); ?>" min="16" max="120">
-                                        <p class="description"><?php _e('Font size in pixels', 'nexjob-seo'); ?></p>
+                                        <p class="description"><?php _e('Text size is automatically calculated based on image dimensions and centered perfectly.', 'nexjob-seo'); ?></p>
                                     </td>
                                 </tr>
                                 <tr>
                                     <th scope="row">
-                                        <label for="font_color"><?php _e('Font Color', 'nexjob-seo'); ?></label>
+                                        <label for="font_color"><?php _e('Text Color', 'nexjob-seo'); ?></label>
                                     </th>
                                     <td>
                                         <input type="color" id="font_color" name="font_color" value="<?php echo esc_attr($automation->font_color ?? '#FFFFFF'); ?>">
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th scope="row">
-                                        <label for="text_align"><?php _e('Text Alignment', 'nexjob-seo'); ?></label>
-                                    </th>
-                                    <td>
-                                        <select id="text_align" name="text_align">
-                                            <option value="left" <?php selected($automation->text_align ?? 'left', 'left'); ?>><?php _e('Left', 'nexjob-seo'); ?></option>
-                                            <option value="center" <?php selected($automation->text_align ?? 'center', 'center'); ?>><?php _e('Center', 'nexjob-seo'); ?></option>
-                                            <option value="right" <?php selected($automation->text_align ?? 'right', 'right'); ?>><?php _e('Right', 'nexjob-seo'); ?></option>
-                                        </select>
-                                    </td>
-                                </tr>
-                            </table>
-                            
-                            <h3><?php _e('Text Area Position', 'nexjob-seo'); ?></h3>
-                            <table class="form-table">
-                                <tr>
-                                    <th scope="row"><?php _e('Position', 'nexjob-seo'); ?></th>
-                                    <td>
-                                        <label>X: <input type="number" name="text_area_x" value="<?php echo esc_attr($automation->text_area_x ?? 50); ?>" min="0" max="1200" style="width: 80px;"></label>
-                                        <label>Y: <input type="number" name="text_area_y" value="<?php echo esc_attr($automation->text_area_y ?? 100); ?>" min="0" max="800" style="width: 80px;"></label>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th scope="row"><?php _e('Size', 'nexjob-seo'); ?></th>
-                                    <td>
-                                        <label>Width: <input type="number" name="text_area_width" value="<?php echo esc_attr($automation->text_area_width ?? 1100); ?>" min="200" max="1200" style="width: 80px;"></label>
-                                        <label>Height: <input type="number" name="text_area_height" value="<?php echo esc_attr($automation->text_area_height ?? 430); ?>" min="100" max="800" style="width: 80px;"></label>
+                                        <p class="description"><?php _e('Choose the color for your text overlay', 'nexjob-seo'); ?></p>
                                     </td>
                                 </tr>
                             </table>
@@ -571,8 +541,8 @@ class NexJob_SEO_Automation_Admin {
             generateLivePreview();
             <?php endif; ?>
             
-            // Auto-regenerate preview when settings change
-            $('#font_size, #font_color, #text_align, input[name="text_area_x"], input[name="text_area_y"], input[name="text_area_width"], input[name="text_area_height"]').on('change input', function() {
+            // Auto-regenerate preview when font color changes
+            $('#font_color').on('change input', function() {
                 // Debounce the preview generation
                 clearTimeout(window.previewTimeout);
                 window.previewTimeout = setTimeout(generateLivePreview, 1000);
@@ -824,17 +794,9 @@ class NexJob_SEO_Automation_Admin {
         
         $template_path = $templates[$automation->template_name]['path'];
         
-        // Prepare configuration
+        // Prepare simplified configuration
         $config = array(
-            'font_size' => $automation->font_size,
-            'font_color' => $automation->font_color,
-            'text_align' => $automation->text_align,
-            'text_area' => array(
-                'x' => $automation->text_area_x,
-                'y' => $automation->text_area_y,
-                'width' => $automation->text_area_width,
-                'height' => $automation->text_area_height
-            )
+            'font_color' => $automation->font_color
         );
         
         // Generate preview image  
