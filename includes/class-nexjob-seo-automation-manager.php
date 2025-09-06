@@ -85,6 +85,22 @@ class NexJob_SEO_Automation_Manager {
         
         $table = $wpdb->prefix . 'nexjob_featured_image_automations';
         
+        // Log detailed debug info
+        error_log('AUTOMATION DEBUG: create_automation called with name: ' . $name);
+        error_log('AUTOMATION DEBUG: table name: ' . $table);
+        
+        // Double-check table exists
+        $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table)) === $table;
+        error_log('AUTOMATION DEBUG: table exists check: ' . ($table_exists ? 'YES' : 'NO'));
+        
+        if (!$table_exists) {
+            error_log('AUTOMATION DEBUG: table missing, creating tables');
+            $this->ensure_database_tables();
+            // Check again
+            $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table)) === $table;
+            error_log('AUTOMATION DEBUG: table exists after creation: ' . ($table_exists ? 'YES' : 'NO'));
+        }
+        
         // Create basic automation entry with defaults
         $insert_data = array(
             'name' => sanitize_text_field($name),
@@ -102,15 +118,25 @@ class NexJob_SEO_Automation_Manager {
             'apply_to_existing' => 0
         );
         
+        error_log('AUTOMATION DEBUG: attempting insert with data: ' . print_r($insert_data, true));
+        
         $result = $wpdb->insert($table, $insert_data);
+        
+        error_log('AUTOMATION DEBUG: insert result: ' . ($result !== false ? 'SUCCESS' : 'FAILED'));
+        if ($result === false) {
+            error_log('AUTOMATION DEBUG: wpdb error: ' . $wpdb->last_error);
+        }
         
         if ($result !== false) {
             $automation_id = $wpdb->insert_id;
+            error_log('AUTOMATION DEBUG: created automation with ID: ' . $automation_id);
             $this->logger->log("Created automation: " . $name, 'info');
             return array('success' => true, 'automation_id' => $automation_id);
         }
         
-        return array('success' => false, 'error' => 'Database insert failed');
+        $error_msg = 'Database insert failed: ' . $wpdb->last_error;
+        error_log('AUTOMATION DEBUG: returning error: ' . $error_msg);
+        return array('success' => false, 'error' => $error_msg);
     }
     
     /**
