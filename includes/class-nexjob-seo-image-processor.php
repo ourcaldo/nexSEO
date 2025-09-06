@@ -126,78 +126,120 @@ class NexJob_SEO_Image_Processor {
     }
 
     /**
-     * Draw large, centered text that's proportional to image size
+     * Draw large, centered text that's proportional to image size and title length
      */
     private function draw_centered_text($image, $text, $color, $shadow_color, $width, $height) {
-        // Calculate proportional font scale based on image size
-        // For a 1200x800 image, we want decent sized text
-        $base_scale = min($width, $height) / 200; // Scale factor based on smaller dimension
-        $font_scale = max(3, intval($base_scale)); // Minimum scale of 3, proportional to image size
+        // Calculate intelligent font size based on image dimensions AND title length
+        $title_length = strlen($text);
         
-        // Use largest built-in GD font
-        $gd_font = 5;
+        // Base font size calculation - much larger than before
+        $base_font_size = min($width, $height) / 15; // Changed from /200 to /15 for readable text
         
-        // Calculate character dimensions
-        $base_char_width = imagefontwidth($gd_font);
-        $base_char_height = imagefontheight($gd_font);
+        // Adjust font size based on title length for optimal readability
+        if ($title_length <= 20) {
+            // Short titles: use largest font
+            $font_size = $base_font_size * 1.2;
+        } elseif ($title_length <= 40) {
+            // Medium titles: use normal font
+            $font_size = $base_font_size;
+        } elseif ($title_length <= 60) {
+            // Long titles: use smaller font
+            $font_size = $base_font_size * 0.8;
+        } else {
+            // Very long titles: use smallest font
+            $font_size = $base_font_size * 0.6;
+        }
         
-        // Effective dimensions with scaling  
-        $char_width = $base_char_width * $font_scale;
-        $char_height = $base_char_height * $font_scale;
+        // Ensure minimum readable size
+        $font_size = max(16, $font_size);
         
-        // Word wrap text to fit 80% of image width
-        $usable_width = $width * 0.8;
-        $chars_per_line = max(8, floor($usable_width / $char_width));
-        $wrapped_text = wordwrap($text, $chars_per_line, "\n", true);
-        $lines = explode("\n", $wrapped_text);
+        // Maximum usable width (90% of image width)
+        $max_text_width = $width * 0.9;
+        
+        // Wrap text intelligently based on available space
+        $lines = $this->wrap_text_to_fit($text, $font_size, $max_text_width);
         
         // Limit to 3 lines maximum
         if (count($lines) > 3) {
             $lines = array_slice($lines, 0, 3);
-            $lines[2] = rtrim($lines[2]) . '...';
+            // Add ellipsis to last line if text was truncated
+            $last_line = $lines[2];
+            if (strlen($last_line) > 5) {
+                $lines[2] = substr($last_line, 0, -3) . '...';
+            }
         }
         
-        // Calculate total text block height
-        $line_spacing = $char_height * 1.2;
-        $total_text_height = count($lines) * $line_spacing;
+        // Calculate line height (font size + spacing)
+        $line_height = $font_size * 1.3;
+        $total_text_height = count($lines) * $line_height;
         
-        // Center vertically
+        // Calculate vertical center position
         $start_y = ($height - $total_text_height) / 2;
         
         // Draw each line centered
-        foreach ($lines as $line_num => $line) {
+        foreach ($lines as $line_index => $line) {
             $line = trim($line);
             if (empty($line)) continue;
             
-            $line_width = strlen($line) * $char_width;
+            // Calculate line width for centering
+            $line_width = $this->calculate_text_width($line, $font_size);
             
-            // Center horizontally
+            // Calculate horizontal center position
             $x = ($width - $line_width) / 2;
-            $y = $start_y + ($line_num * $line_spacing);
+            $y = $start_y + ($line_index * $line_height);
             
-            // Draw text with shadow for visibility
-            $this->draw_scaled_text($image, $gd_font, $x, $y, $line, $color, $shadow_color, $font_scale);
+            // Draw text with shadow for maximum visibility
+            $this->draw_text_with_shadow($image, $x, $y, $line, $font_size, $color, $shadow_color);
         }
     }
     
     /**
-     * Draw scaled text with shadow for maximum visibility
+     * Draw text with shadow using proper font sizing
      */
-    private function draw_scaled_text($image, $font, $x, $y, $text, $color, $shadow_color, $scale) {
-        // Draw shadow with bigger offset for larger text
-        $shadow_offset = max(2, $scale);
-        for ($sx = 0; $sx < $scale; $sx++) {
-            for ($sy = 0; $sy < $scale; $sy++) {
-                imagestring($image, $font, $x + $sx + $shadow_offset, $y + $sy + $shadow_offset, $text, $shadow_color);
-            }
+    private function draw_text_with_shadow($image, $x, $y, $text, $font_size, $color, $shadow_color) {
+        // Use imagestring for consistent rendering with calculated size
+        $gd_font = 5; // Largest built-in GD font
+        
+        // Calculate how many times to draw for thickness based on font size
+        $thickness = max(1, intval($font_size / 20));
+        
+        // Draw shadow first (offset by thickness + 1)
+        $shadow_offset = $thickness + 1;
+        for ($i = 0; $i < $thickness; $i++) {
+            imagestring($image, $gd_font, $x + $shadow_offset + $i, $y + $shadow_offset + $i, $text, $shadow_color);
         }
         
-        // Draw main text with scaling for thickness
-        for ($sx = 0; $sx < $scale; $sx++) {
-            for ($sy = 0; $sy < $scale; $sy++) {
-                imagestring($image, $font, $x + $sx, $y + $sy, $text, $color);
+        // Draw main text with thickness for bold effect
+        for ($i = 0; $i < $thickness; $i++) {
+            for ($j = 0; $j < $thickness; $j++) {
+                imagestring($image, $gd_font, $x + $i, $y + $j, $text, $color);
             }
         }
+    }
+    
+    /**
+     * Calculate text width for centering
+     */
+    private function calculate_text_width($text, $font_size) {
+        // Base character width for GD font 5
+        $char_width = 9; // Average width of GD font 5 characters
+        
+        // Scale based on our font size calculation
+        $scale_factor = $font_size / 20; // Base scaling
+        
+        return strlen($text) * $char_width * $scale_factor;
+    }
+    
+    /**
+     * Wrap text to fit within specified width
+     */
+    private function wrap_text_to_fit($text, $font_size, $max_width) {
+        $char_width = 9 * ($font_size / 20); // Scaled character width
+        $chars_per_line = max(10, floor($max_width / $char_width));
+        
+        // Use wordwrap to break text intelligently
+        $wrapped = wordwrap($text, $chars_per_line, "\n", true);
+        return explode("\n", $wrapped);
     }
 
     /**
