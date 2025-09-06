@@ -49,10 +49,17 @@ require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-template-manager
 require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-image-processor.php';
 require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-auto-featured-image.php';
 require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-batch-processor.php';
+require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-automation-database.php';
+require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-automation-manager.php';
+require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-automation-admin.php';
+
+// Global plugin instance for access in admin pages
+global $nexjob_seo_plugin;
 
 // Initialize the plugin
 function nexjob_seo_init() {
-    new NexJob_SEO_Plugin();
+    global $nexjob_seo_plugin;
+    $nexjob_seo_plugin = new NexJob_SEO_Plugin();
 }
 
 // Hook to plugins_loaded to ensure WordPress is fully loaded

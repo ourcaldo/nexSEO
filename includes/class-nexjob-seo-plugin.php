@@ -31,6 +31,8 @@ class NexJob_SEO_Plugin {
     private $image_processor;
     private $auto_featured_image;
     private $batch_processor;
+    private $automation_manager;
+    private $automation_admin;
     
     /**
      * Constructor
@@ -64,6 +66,7 @@ class NexJob_SEO_Plugin {
         
         // Initialize auto featured images components (if GD library is available)
         if (extension_loaded('gd')) {
+            $this->automation_manager = new NexJob_SEO_Automation_Manager($this->logger);
             $this->template_manager = new NexJob_SEO_Template_Manager($this->settings);
             $this->image_processor = new NexJob_SEO_Image_Processor($this->settings, $this->logger);
             $this->auto_featured_image = new NexJob_SEO_Auto_Featured_Image($this->settings, $this->logger);
@@ -83,6 +86,16 @@ class NexJob_SEO_Plugin {
             );
             $this->ajax_handlers = new NexJob_SEO_Ajax_Handlers($this->settings, $this->logger);
             $this->webhook_admin = new NexJob_SEO_Webhook_Admin($this->logger, $this->webhook_manager, $this->webhook_data, $this->field_mapper, $this->webhook_processor);
+            
+            // Initialize automation admin if featured images are available
+            if (extension_loaded('gd')) {
+                $this->automation_admin = new NexJob_SEO_Automation_Admin(
+                    $this->logger,
+                    $this->automation_manager,
+                    $this->template_manager,
+                    $this->auto_featured_image
+                );
+            }
         }
     }
     
@@ -108,6 +121,11 @@ class NexJob_SEO_Plugin {
         
         // Create webhook database tables
         NexJob_SEO_Webhook_Database::create_tables();
+        
+        // Create automation database tables
+        if (extension_loaded('gd')) {
+            NexJob_SEO_Automation_Database::create_tables();
+        }
         
         // Initialize cron manager for activation
         $settings = new NexJob_SEO_Settings();
@@ -169,5 +187,21 @@ class NexJob_SEO_Plugin {
     
     public function get_webhook_admin() {
         return $this->webhook_admin;
+    }
+    
+    public function get_automation_admin() {
+        return $this->automation_admin;
+    }
+    
+    public function get_automation_manager() {
+        return $this->automation_manager;
+    }
+    
+    public function get_auto_featured_image() {
+        return $this->auto_featured_image;
+    }
+    
+    public function get_template_manager() {
+        return $this->template_manager;
     }
 }

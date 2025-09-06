@@ -98,6 +98,21 @@ class NexJob_SEO_Admin {
     }
     
     /**
+     * Add automation menu items
+     */
+    public function add_automation_menu() {
+        // Automation submenu
+        add_submenu_page(
+            'nexjob-seo',
+            __('Automations', 'nexjob-seo'),
+            __('Automations', 'nexjob-seo'),
+            'manage_options',
+            'nexjob-seo-automations',
+            array($this, 'automations_page')
+        );
+    }
+    
+    /**
      * Main admin page
      */
     public function admin_page() {
@@ -784,5 +799,26 @@ class NexJob_SEO_Admin {
         }
         
         return $stats;
+    }
+    
+    /**
+     * Automations page
+     */
+    public function automations_page() {
+        // Check if automation admin is available
+        $automation_admin = null;
+        
+        // Get the automation admin from the global plugin instance
+        global $nexjob_seo_plugin;
+        if ($nexjob_seo_plugin && method_exists($nexjob_seo_plugin, 'get_automation_admin')) {
+            $automation_admin = $nexjob_seo_plugin->get_automation_admin();
+        }
+        
+        if ($automation_admin) {
+            $automation_admin->render_automation_page();
+        } else {
+            echo '<div class="wrap"><h1>' . __('Automations', 'nexjob-seo') . '</h1>';
+            echo '<p>' . __('Automation system is not available. Please ensure GD library is installed.', 'nexjob-seo') . '</p></div>';
+        }
     }
 }
