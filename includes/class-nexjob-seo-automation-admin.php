@@ -46,8 +46,8 @@ class NexJob_SEO_Automation_Admin {
         // Add automation page (hidden from menu, called from main admin)
         add_submenu_page(
             null, // Hidden from menu
-            __('Add Automation', 'nexjob-seo'),
-            __('Add Automation', 'nexjob-seo'),
+            __('Add Featured Image Automation', 'nexjob-seo'),
+            __('Add Featured Image Automation', 'nexjob-seo'),
             'manage_options',
             'nexjob-seo-add-automation',
             array($this, 'add_automation_page')
@@ -56,8 +56,8 @@ class NexJob_SEO_Automation_Admin {
         // Configure automation page
         add_submenu_page(
             null, // Hidden from menu
-            __('Configure Automation', 'nexjob-seo'),
-            __('Configure Automation', 'nexjob-seo'),
+            __('Configure Featured Image Automation', 'nexjob-seo'),
+            __('Configure Featured Image Automation', 'nexjob-seo'),
             'manage_options',
             'nexjob-seo-configure-automation',
             array($this, 'configure_automation_page')
@@ -245,7 +245,7 @@ class NexJob_SEO_Automation_Admin {
     public function add_automation_page() {
         ?>
         <div class="wrap">
-            <h1><?php _e('Add New Automation', 'nexjob-seo'); ?></h1>
+            <h1><?php _e('Add New Featured Image Automation', 'nexjob-seo'); ?></h1>
             
             <form method="post" action="">
                 <?php wp_nonce_field('create_automation', 'automation_nonce'); ?>
@@ -295,7 +295,7 @@ class NexJob_SEO_Automation_Admin {
         $post_types = get_post_types(array('public' => true), 'objects');
         ?>
         <div class="wrap">
-            <h1><?php printf(__('Configure Automation: %s', 'nexjob-seo'), esc_html($automation->name)); ?></h1>
+            <h1><?php printf(__('Configure Featured Image Automation: %s', 'nexjob-seo'), esc_html($automation->name)); ?></h1>
             
             <div class="automation-config-container">
                 <!-- Step 1: Basic Settings -->

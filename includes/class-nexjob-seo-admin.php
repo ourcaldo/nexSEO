@@ -108,8 +108,8 @@ class NexJob_SEO_Admin {
         // Automation submenu
         add_submenu_page(
             'nexjob-seo',
-            __('Automations', 'nexjob-seo'),
-            __('Automations', 'nexjob-seo'),
+            __('Featured Image Automations', 'nexjob-seo'),
+            __('Featured Image Automations', 'nexjob-seo'),
             'manage_options',
             'nexjob-seo-automations',
             array($this, 'automations_page')
@@ -548,7 +548,7 @@ class NexJob_SEO_Admin {
         if ($automation_admin) {
             $automation_admin->render_automation_page();
         } else {
-            echo '<div class="wrap"><h1>' . __('Automations', 'nexjob-seo') . '</h1>';
+            echo '<div class="wrap"><h1>' . __('Featured Image Automations', 'nexjob-seo') . '</h1>';
             echo '<p>' . __('Automation system is not available. Please ensure GD library is installed.', 'nexjob-seo') . '</p></div>';
         }
     }
