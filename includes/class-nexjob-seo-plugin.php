@@ -135,6 +135,13 @@ class NexJob_SEO_Plugin {
     }
     
     /**
+     * Get automation admin instance
+     */
+    public function get_automation_admin() {
+        return $this->automation_admin ?? null;
+    }
+    
+    /**
      * Plugin deactivation
      */
     public static function deactivate() {

@@ -45,6 +45,15 @@ class NexJob_SEO_Admin {
         // Add automation menu if available
         if (extension_loaded('gd')) {
             add_action('admin_menu', array($this, 'add_automation_menu'), 11);
+            
+            // Initialize automation admin action handlers
+            global $nexjob_seo_plugin;
+            if ($nexjob_seo_plugin && method_exists($nexjob_seo_plugin, 'get_automation_admin')) {
+                $automation_admin = $nexjob_seo_plugin->get_automation_admin();
+                if ($automation_admin) {
+                    add_action('admin_init', array($automation_admin, 'handle_automation_admin_actions'));
+                }
+            }
         }
         
         // Add manual process buttons to post list pages
@@ -105,6 +114,15 @@ class NexJob_SEO_Admin {
             'nexjob-seo-automations',
             array($this, 'automations_page')
         );
+        
+        // Add automation admin submenu pages if automation admin is available
+        global $nexjob_seo_plugin;
+        if ($nexjob_seo_plugin && method_exists($nexjob_seo_plugin, 'get_automation_admin')) {
+            $automation_admin = $nexjob_seo_plugin->get_automation_admin();
+            if ($automation_admin) {
+                $automation_admin->add_automation_admin_menu();
+            }
+        }
     }
     
     /**
