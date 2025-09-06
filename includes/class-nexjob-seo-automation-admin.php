@@ -459,25 +459,23 @@ class NexJob_SEO_Automation_Admin {
                 <div class="postbox">
                     <h2 class="hndle"><?php _e('Step 4: Preview Studio', 'nexjob-seo'); ?></h2>
                     <div class="inside">
-                        <p><?php _e('Preview how your featured images will look:', 'nexjob-seo'); ?></p>
-                        
-                        <div style="margin-bottom: 20px;">
-                            <label for="preview_title"><?php _e('Sample Title:', 'nexjob-seo'); ?></label><br>
-                            <input type="text" id="preview_title" value="Sample Job Title - Marketing Manager Position" style="width: 100%; max-width: 500px;">
-                            <button type="button" id="generate_preview" class="button"><?php _e('Generate Preview', 'nexjob-seo'); ?></button>
-                        </div>
+                        <p><?php _e('Live preview with sample text overlay:', 'nexjob-seo'); ?></p>
                         
                         <div id="preview_container" style="border: 1px solid #ddd; padding: 20px; background: #f9f9f9; text-align: center;">
-                            <?php if (isset($templates[$automation->template_name])): ?>
-                                <div class="current-template-preview">
-                                    <h4><?php _e('Current Template Preview:', 'nexjob-seo'); ?></h4>
-                                    <img src="<?php echo esc_url($templates[$automation->template_name]['url']); ?>" 
-                                         style="max-width: 400px; height: auto; border: 1px solid #ccc; margin-bottom: 10px;">
-                                    <p><?php _e('This is how your template looks. Text will be overlaid when generating featured images.', 'nexjob-seo'); ?></p>
-                                </div>
-                            <?php else: ?>
-                                <p><?php _e('No template selected. Please select a template above.', 'nexjob-seo'); ?></p>
-                            <?php endif; ?>
+                            <div id="preview_loading" style="display: none;">
+                                <p><?php _e('Generating preview...', 'nexjob-seo'); ?></p>
+                            </div>
+                            <div id="preview_content">
+                                <?php if (isset($templates[$automation->template_name])): ?>
+                                    <h4><?php _e('Preview with Text Overlay:', 'nexjob-seo'); ?></h4>
+                                    <div id="live_preview_image" style="margin-bottom: 10px;">
+                                        <!-- Preview will be generated automatically -->
+                                    </div>
+                                    <p style="font-size: 12px; color: #666;"><?php _e('This preview updates automatically when you change settings above.', 'nexjob-seo'); ?></p>
+                                <?php else: ?>
+                                    <p><?php _e('No template selected. Please select a template above.', 'nexjob-seo'); ?></p>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -509,9 +507,8 @@ class NexJob_SEO_Automation_Admin {
                 $(this).css('border-color', '#0073aa').css('background', '#f0f8ff');
                 $('#template_name').val($(this).data('template'));
                 
-                // Update preview to show selected template
-                var templateImg = $(this).find('img').attr('src');
-                $('#preview_container').html('<div class="current-template-preview"><h4>Current Template Preview:</h4><img src="' + templateImg + '" style="max-width: 400px; height: auto; border: 1px solid #ccc; margin-bottom: 10px;"><p>This is how your template looks. Text will be overlaid when generating featured images.</p></div>');
+                // Auto-generate preview with new template
+                generateLivePreview();
             });
             
             // Upload custom template
@@ -544,25 +541,41 @@ class NexJob_SEO_Automation_Admin {
                 }
             });
             
-            // Generate preview
-            $('#generate_preview').click(function() {
-                var title = $('#preview_title').val();
+            // Auto-generate preview when page loads
+            function generateLivePreview() {
                 var automationId = <?php echo $automation_id; ?>;
+                var sampleTitle = 'Sample Job Title - Marketing Manager Position';
                 
-                $('#preview_container').html('<p>Generating preview...</p>');
+                $('#preview_loading').show();
+                $('#preview_content').hide();
                 
                 $.post(ajaxurl, {
                     action: 'nexjob_generate_preview',
                     automation_id: automationId,
-                    sample_title: title,
+                    sample_title: sampleTitle,
                     nonce: '<?php echo wp_create_nonce('automation_preview'); ?>'
                 }, function(response) {
+                    $('#preview_loading').hide();
+                    $('#preview_content').show();
+                    
                     if (response.success) {
-                        $('#preview_container').html('<img src="' + response.data.preview_url + '" style="max-width: 100%; height: auto; border: 1px solid #ccc;">');
+                        $('#live_preview_image').html('<img src="' + response.data.preview_url + '" style="max-width: 400px; height: auto; border: 1px solid #ccc;">');
                     } else {
-                        $('#preview_container').html('<p style="color: red;">Error: ' + response.data.message + '</p>');
+                        $('#live_preview_image').html('<p style="color: red;">Error: ' + response.data.message + '</p>');
                     }
                 });
+            }
+            
+            // Generate preview on page load
+            <?php if (isset($templates[$automation->template_name])): ?>
+            generateLivePreview();
+            <?php endif; ?>
+            
+            // Auto-regenerate preview when settings change
+            $('#font_size, #font_color, #text_align, input[name="text_area_x"], input[name="text_area_y"], input[name="text_area_width"], input[name="text_area_height"]').on('change input', function() {
+                // Debounce the preview generation
+                clearTimeout(window.previewTimeout);
+                window.previewTimeout = setTimeout(generateLivePreview, 1000);
             });
             
             // Apply to existing posts
