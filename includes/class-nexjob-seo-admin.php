@@ -16,15 +16,21 @@ class NexJob_SEO_Admin {
     private $logger;
     private $post_processor;
     private $cron_manager;
+    private $auto_featured_image;
+    private $template_manager;
+    private $batch_processor;
     
     /**
      * Constructor
      */
-    public function __construct($settings, $logger, $post_processor, $cron_manager) {
+    public function __construct($settings, $logger, $post_processor, $cron_manager, $auto_featured_image = null, $template_manager = null, $batch_processor = null) {
         $this->settings = $settings;
         $this->logger = $logger;
         $this->post_processor = $post_processor;
         $this->cron_manager = $cron_manager;
+        $this->auto_featured_image = $auto_featured_image;
+        $this->template_manager = $template_manager;
+        $this->batch_processor = $batch_processor;
         $this->init_hooks();
     }
     
@@ -77,6 +83,18 @@ class NexJob_SEO_Admin {
             'nexjob-seo-logs',
             array($this, 'logs_page')
         );
+        
+        // Featured Images submenu (if component is available)
+        if ($this->auto_featured_image && $this->template_manager) {
+            add_submenu_page(
+                'nexjob-seo',
+                __('Featured Images', 'nexjob-seo'),
+                __('Featured Images', 'nexjob-seo'),
+                'manage_options',
+                'nexjob-seo-featured-images',
+                array($this, 'featured_images_page')
+            );
+        }
     }
     
     /**
@@ -86,6 +104,12 @@ class NexJob_SEO_Admin {
         // Get processing statistics
         $stats = $this->get_processing_stats();
         $cron_info = $this->cron_manager->get_cron_info();
+        
+        // Get featured images statistics if available
+        $featured_image_stats = null;
+        if ($this->auto_featured_image) {
+            $featured_image_stats = $this->auto_featured_image->get_statistics();
+        }
         ?>
         <div class="wrap">
             <h1><?php _e('NexJob SEO Automation', 'nexjob-seo'); ?></h1>
@@ -146,6 +170,39 @@ class NexJob_SEO_Admin {
                         </div>
                     </div>
                     
+                    <!-- Featured Images Widget -->
+                    <?php if ($featured_image_stats): ?>
+                    <div class="postbox">
+                        <h2 class="hndle"><?php _e('Featured Images Status', 'nexjob-seo'); ?></h2>
+                        <div class="inside">
+                            <table class="widefat">
+                                <tbody>
+                                    <tr>
+                                        <td><?php _e('Posts without Featured Images', 'nexjob-seo'); ?></td>
+                                        <td><strong><?php echo esc_html($featured_image_stats['posts_without_featured_images']); ?></strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><?php _e('Total Generations', 'nexjob-seo'); ?></td>
+                                        <td><strong><?php echo esc_html($featured_image_stats['total_generations']); ?></strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><?php _e('Success Rate', 'nexjob-seo'); ?></td>
+                                        <td><strong><?php echo esc_html($featured_image_stats['success_rate']); ?>%</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <?php if ($featured_image_stats['posts_without_featured_images'] > 0): ?>
+                            <p style="margin-top: 15px;">
+                                <a href="<?php echo esc_url(admin_url('admin.php?page=nexjob-seo-featured-images')); ?>" 
+                                   class="button button-primary">
+                                    <?php _e('Manage Featured Images', 'nexjob-seo'); ?>
+                                </a>
+                            </p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    
                     <!-- Actions Widget -->
                     <div class="postbox">
                         <h2 class="hndle"><?php _e('Manual Actions', 'nexjob-seo'); ?></h2>
@@ -163,6 +220,13 @@ class NexJob_SEO_Admin {
                                     <?php _e('Force Regenerate All', 'nexjob-seo'); ?>
                                 </a>
                             </p>
+                            <?php if ($this->auto_featured_image && $featured_image_stats['posts_without_featured_images'] > 0): ?>
+                            <p>
+                                <button type="button" id="generate-featured-images-bulk" class="button button-secondary">
+                                    <?php _e('Generate Featured Images', 'nexjob-seo'); ?>
+                                </button>
+                            </p>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -262,6 +326,290 @@ class NexJob_SEO_Admin {
             setInterval(function() {
                 $('#refresh-logs').click();
             }, 30000);
+        });
+        </script>
+        <?php
+    }
+    
+    /**
+     * Featured Images management page
+     */
+    public function featured_images_page() {
+        if (!$this->auto_featured_image || !$this->template_manager) {
+            echo '<div class="wrap"><h1>Featured Images feature not available</h1></div>';
+            return;
+        }
+
+        // Get statistics and templates
+        $stats = $this->auto_featured_image->get_statistics();
+        $templates = $this->template_manager->get_available_templates();
+        $posts_without_images = $this->auto_featured_image->get_posts_without_featured_images(20);
+        
+        // Handle template upload
+        if (isset($_POST['upload_template']) && isset($_FILES['template_file'])) {
+            check_admin_referer('nexjob_featured_images_nonce');
+            $upload_result = $this->template_manager->upload_custom_template($_FILES['template_file']);
+            
+            if (is_wp_error($upload_result)) {
+                echo '<div class="notice notice-error"><p>' . esc_html($upload_result->get_error_message()) . '</p></div>';
+            } else {
+                echo '<div class="notice notice-success"><p>' . __('Template uploaded successfully!', 'nexjob-seo') . '</p></div>';
+                $templates = $this->template_manager->get_available_templates(); // Refresh templates
+            }
+        }
+
+        ?>
+        <div class="wrap">
+            <h1><?php _e('Auto Featured Images', 'nexjob-seo'); ?></h1>
+            
+            <div class="dashboard-widgets-wrap">
+                <div class="metabox-holder">
+                    
+                    <!-- Statistics Widget -->
+                    <div class="postbox">
+                        <h2 class="hndle"><?php _e('Statistics', 'nexjob-seo'); ?></h2>
+                        <div class="inside">
+                            <table class="widefat">
+                                <tbody>
+                                    <tr>
+                                        <td><?php _e('Posts without Featured Images', 'nexjob-seo'); ?></td>
+                                        <td><strong><?php echo esc_html($stats['posts_without_featured_images']); ?></strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><?php _e('Total Image Generations', 'nexjob-seo'); ?></td>
+                                        <td><strong><?php echo esc_html($stats['total_generations']); ?></strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><?php _e('Successful Generations', 'nexjob-seo'); ?></td>
+                                        <td><strong><?php echo esc_html($stats['successful_generations']); ?></strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><?php _e('Failed Generations', 'nexjob-seo'); ?></td>
+                                        <td><strong><?php echo esc_html($stats['failed_generations']); ?></strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><?php _e('Success Rate', 'nexjob-seo'); ?></td>
+                                        <td><strong><?php echo esc_html($stats['success_rate']); ?>%</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Bulk Processing Widget -->
+                    <div class="postbox">
+                        <h2 class="hndle"><?php _e('Bulk Processing', 'nexjob-seo'); ?></h2>
+                        <div class="inside">
+                            <?php if ($stats['posts_without_featured_images'] > 0): ?>
+                                <p><?php printf(__('Found %d posts without featured images.', 'nexjob-seo'), $stats['posts_without_featured_images']); ?></p>
+                                <p>
+                                    <button type="button" id="start-batch-processing" class="button button-primary">
+                                        <?php _e('Generate All Featured Images', 'nexjob-seo'); ?>
+                                    </button>
+                                    <span id="batch-progress" style="display: none;">
+                                        <span id="progress-text">Processing...</span>
+                                        <progress id="progress-bar" max="100" value="0"></progress>
+                                    </span>
+                                </p>
+                                <div id="batch-results" style="display: none;"></div>
+                            <?php else: ?>
+                                <p style="color: green;"><?php _e('All posts have featured images!', 'nexjob-seo'); ?></p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Template Management Widget -->
+                    <div class="postbox">
+                        <h2 class="hndle"><?php _e('Template Management', 'nexjob-seo'); ?></h2>
+                        <div class="inside">
+                            <h3><?php _e('Available Templates', 'nexjob-seo'); ?></h3>
+                            <?php if (!empty($templates)): ?>
+                                <div class="template-gallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                                    <?php foreach ($templates as $template_id => $template): ?>
+                                        <div class="template-item" style="border: 1px solid #ddd; padding: 10px; text-align: center;">
+                                            <img src="<?php echo esc_url($template['url']); ?>" 
+                                                 alt="<?php echo esc_attr($template['name']); ?>"
+                                                 style="max-width: 100%; height: 120px; object-fit: cover; margin-bottom: 8px;">
+                                            <h4><?php echo esc_html($template['name']); ?></h4>
+                                            <p><small><?php echo esc_html(ucfirst($template['type'])); ?></small></p>
+                                            <?php if ($template['type'] === 'custom'): ?>
+                                                <button type="button" class="button button-secondary button-small delete-template" 
+                                                        data-template="<?php echo esc_attr($template_id); ?>">
+                                                    <?php _e('Delete', 'nexjob-seo'); ?>
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <h3><?php _e('Upload New Template', 'nexjob-seo'); ?></h3>
+                            <form method="post" enctype="multipart/form-data">
+                                <?php wp_nonce_field('nexjob_featured_images_nonce'); ?>
+                                <table class="form-table">
+                                    <tr>
+                                        <th scope="row"><?php _e('Template Image', 'nexjob-seo'); ?></th>
+                                        <td>
+                                            <input type="file" name="template_file" accept="image/*" required>
+                                            <p class="description">
+                                                <?php _e('Upload a PNG, JPG, or GIF image to use as a template. Recommended size: 1200x630 pixels.', 'nexjob-seo'); ?>
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
+                                <p>
+                                    <button type="submit" name="upload_template" class="button button-primary">
+                                        <?php _e('Upload Template', 'nexjob-seo'); ?>
+                                    </button>
+                                </p>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Recent Posts Widget -->
+                    <?php if (!empty($posts_without_images)): ?>
+                    <div class="postbox">
+                        <h2 class="hndle"><?php _e('Posts without Featured Images', 'nexjob-seo'); ?></h2>
+                        <div class="inside">
+                            <table class="wp-list-table widefat fixed striped">
+                                <thead>
+                                    <tr>
+                                        <th><?php _e('Post Title', 'nexjob-seo'); ?></th>
+                                        <th><?php _e('Post Type', 'nexjob-seo'); ?></th>
+                                        <th><?php _e('Published', 'nexjob-seo'); ?></th>
+                                        <th><?php _e('Actions', 'nexjob-seo'); ?></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($posts_without_images as $post): ?>
+                                        <tr>
+                                            <td>
+                                                <a href="<?php echo get_edit_post_link($post->ID); ?>">
+                                                    <?php echo esc_html($post->post_title); ?>
+                                                </a>
+                                            </td>
+                                            <td><?php echo esc_html($post->post_type); ?></td>
+                                            <td><?php echo esc_html(get_the_date('Y-m-d', $post->ID)); ?></td>
+                                            <td>
+                                                <button type="button" class="button button-secondary button-small generate-single" 
+                                                        data-post-id="<?php echo esc_attr($post->ID); ?>">
+                                                    <?php _e('Generate', 'nexjob-seo'); ?>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                            <?php if (count($posts_without_images) >= 20): ?>
+                                <p><em><?php _e('Showing first 20 posts. Use bulk processing to generate all.', 'nexjob-seo'); ?></em></p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    
+                </div>
+            </div>
+        </div>
+
+        <script>
+        jQuery(document).ready(function($) {
+            var currentBatchId = null;
+            
+            // Start batch processing
+            $('#start-batch-processing').click(function() {
+                var button = $(this);
+                button.prop('disabled', true);
+                $('#batch-progress').show();
+                $('#progress-text').text('Starting batch processing...');
+                
+                $.post(ajaxurl, {
+                    action: 'nexjob_start_batch_processing',
+                    nonce: '<?php echo wp_create_nonce('nexjob_seo_nonce'); ?>'
+                }, function(response) {
+                    if (response.success) {
+                        currentBatchId = response.data.batch_id;
+                        $('#progress-text').text('Processing ' + response.data.total_posts + ' posts...');
+                        monitorBatchProgress();
+                    } else {
+                        $('#progress-text').text('Error: ' + response.data.message);
+                        button.prop('disabled', false);
+                    }
+                });
+            });
+            
+            // Monitor batch progress
+            function monitorBatchProgress() {
+                if (!currentBatchId) return;
+                
+                $.post(ajaxurl, {
+                    action: 'nexjob_get_batch_status',
+                    batch_id: currentBatchId,
+                    nonce: '<?php echo wp_create_nonce('nexjob_seo_nonce'); ?>'
+                }, function(response) {
+                    if (response.success) {
+                        var status = response.data;
+                        $('#progress-bar').val(status.progress_percentage);
+                        $('#progress-text').text(
+                            'Processing: ' + status.processed + '/' + status.total + 
+                            ' (' + status.progress_percentage + '%) - ' +
+                            status.successful + ' successful, ' + status.failed + ' failed'
+                        );
+                        
+                        if (status.status === 'completed') {
+                            $('#batch-results').html(
+                                '<div class="notice notice-success"><p>Batch completed! ' + 
+                                status.successful + ' images generated successfully, ' + 
+                                status.failed + ' failed.</p></div>'
+                            ).show();
+                            $('#start-batch-processing').prop('disabled', false);
+                            setTimeout(function() { location.reload(); }, 2000);
+                        } else if (status.status === 'processing' || status.status === 'pending') {
+                            setTimeout(monitorBatchProgress, 2000);
+                        }
+                    }
+                });
+            }
+            
+            // Generate single featured image
+            $('.generate-single').click(function() {
+                var button = $(this);
+                var postId = button.data('post-id');
+                var originalText = button.text();
+                
+                button.text('Generating...').prop('disabled', true);
+                
+                $.post(ajaxurl, {
+                    action: 'nexjob_generate_featured_image',
+                    post_id: postId,
+                    nonce: '<?php echo wp_create_nonce('nexjob_seo_nonce'); ?>'
+                }, function(response) {
+                    if (response.success) {
+                        button.text('Success!').removeClass('button-secondary').addClass('button-primary');
+                        setTimeout(function() {
+                            button.closest('tr').fadeOut();
+                        }, 1000);
+                    } else {
+                        button.text('Failed').removeClass('button-secondary').addClass('button-secondary');
+                        setTimeout(function() {
+                            button.text(originalText).prop('disabled', false);
+                        }, 2000);
+                    }
+                });
+            });
+            
+            // Delete template
+            $('.delete-template').click(function() {
+                if (!confirm('Are you sure you want to delete this template?')) {
+                    return;
+                }
+                
+                var button = $(this);
+                var templateId = button.data('template');
+                
+                // This would require an AJAX endpoint for template deletion
+                // For now, just show a message
+                alert('Template deletion feature will be implemented in the next update.');
+            });
         });
         </script>
         <?php
