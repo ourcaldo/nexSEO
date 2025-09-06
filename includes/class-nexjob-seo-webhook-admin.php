@@ -361,11 +361,11 @@ class NexJob_SEO_Webhook_Admin {
                                         foreach ($existing_mappings as $index => $mapping):
                                     ?>
                                         <div class="field-mapping-row">
-                                            <select name="field_mappings[<?php echo $index; ?>][webhook_field]" class="webhook-field-select">
+                                            <select name="field_mappings[<?php echo $index; ?>][webhook_field]" class="webhook-field-select" data-preserved-value="<?php echo esc_attr($mapping['webhook_field']); ?>">
                                                 <option value="<?php echo esc_attr($mapping['webhook_field']); ?>"><?php echo esc_html($mapping['webhook_field']); ?></option>
                                             </select>
                                             <span> → </span>
-                                            <select name="field_mappings[<?php echo $index; ?>][wp_field]" class="wp-field-select">
+                                            <select name="field_mappings[<?php echo $index; ?>][wp_field]" class="wp-field-select" data-preserved-value="<?php echo esc_attr($mapping['wp_field']); ?>">
                                                 <option value="<?php echo esc_attr($mapping['wp_field']); ?>"><?php echo esc_html($mapping['wp_field']); ?></option>
                                             </select>
                                             <input type="text" name="field_mappings[<?php echo $index; ?>][default_value]" 
@@ -448,7 +448,8 @@ class NexJob_SEO_Webhook_Admin {
                             // Update ALL webhook field dropdowns with fresh data
                             if (response.data.fields && response.data.fields.length > 0) {
                                 console.log('Fresh webhook fields received:', response.data.fields);
-                                latestWebhookFields = response.data.fields;
+                                latestWebhookFields = response.data.fields.slice(); // Create a copy to avoid reference issues
+                                console.log('latestWebhookFields after assignment:', latestWebhookFields);
                                 updateAllWebhookFieldDropdowns();
                             } else {
                                 console.log('No webhook fields in response');
@@ -558,16 +559,26 @@ class NexJob_SEO_Webhook_Admin {
             
             // Populate a single webhook field dropdown - allow reusing same field multiple times
             function populateWebhookFieldSelect($select) {
-                var currentValue = $select.val();
+                var currentValue = $select.val() || $select.data('preserved-value');
+                console.log('Populating webhook field dropdown. Current value:', currentValue, 'Preserved value:', $select.data('preserved-value'), 'Available fields:', latestWebhookFields);
+                
                 $select.empty().append('<option value=""><?php _e('Select webhook field', 'nexjob-seo'); ?></option>');
                 
                 // Allow all fields to be selectable in every dropdown (no restrictions)
-                latestWebhookFields.forEach(function(field) {
-                    $select.append('<option value="' + field + '">' + field + '</option>');
-                });
+                if (latestWebhookFields && latestWebhookFields.length > 0) {
+                    latestWebhookFields.forEach(function(field) {
+                        $select.append('<option value="' + field + '">' + field + '</option>');
+                    });
+                }
                 
                 // Restore previous selection if it still exists
-                if (currentValue && latestWebhookFields.indexOf(currentValue) !== -1) {
+                if (currentValue && latestWebhookFields && latestWebhookFields.indexOf(currentValue) !== -1) {
+                    $select.val(currentValue);
+                    console.log('Restored previous selection:', currentValue);
+                } else if (currentValue) {
+                    console.log('Could not restore previous selection:', currentValue, 'not found in available fields:', latestWebhookFields);
+                    // Keep the old value as an option even if not in new fields (backward compatibility)
+                    $select.append('<option value="' + currentValue + '">' + currentValue + ' (legacy)</option>');
                     $select.val(currentValue);
                 }
             }
@@ -693,7 +704,14 @@ class NexJob_SEO_Webhook_Admin {
             $webhook_id = intval($_POST['webhook_id']);
             // Debug: Log how many field mappings were submitted
             error_log('NexJob Debug: Field mappings submitted: ' . count($_POST['field_mappings'] ?? array()));
-            error_log('NexJob Debug: Field mappings data: ' . print_r($_POST['field_mappings'] ?? array(), true));
+            error_log('NexJob Debug: Raw field mappings data: ' . print_r($_POST['field_mappings'] ?? array(), true));
+            
+            // Debug each individual mapping for detailed analysis
+            if (isset($_POST['field_mappings']) && is_array($_POST['field_mappings'])) {
+                foreach ($_POST['field_mappings'] as $index => $mapping) {
+                    error_log("NexJob Debug: Mapping[$index] = " . json_encode($mapping));
+                }
+            }
             
             // Sanitize field mappings - allow unlimited mappings including duplicates
             $field_mappings = array();
@@ -712,6 +730,7 @@ class NexJob_SEO_Webhook_Admin {
             }
             
             error_log('NexJob Debug: Field mappings processed: ' . count($field_mappings));
+            error_log('NexJob Debug: Final processed mappings: ' . json_encode($field_mappings));
             
             $config = array(
                 'post_type' => sanitize_text_field($_POST['post_type']),
