@@ -383,6 +383,7 @@ class NexJob_SEO_Webhook_Admin {
                                 <button type="button" id="suggest-mappings" class="button"><?php _e('Auto-Suggest Mappings', 'nexjob-seo'); ?></button>
                             </div>
                             
+                            <p><strong>Note:</strong> You can map the same webhook field to multiple WordPress fields. For example, map field "E" to both "Post Excerpt" and "SEO Meta Description".</p>
                             <?php submit_button(__('Save Configuration', 'nexjob-seo')); ?>
                         </form>
                     </div>
@@ -476,6 +477,29 @@ class NexJob_SEO_Webhook_Admin {
                         console.log('AJAX request completed');
                     }
                 });
+            });
+            
+            // Form submission debugging
+            $('#webhook-config-form').on('submit', function(e) {
+                var totalRows = $('#field-mappings .field-mapping-row').length;
+                console.log('Form submitted with', totalRows, 'field mapping rows');
+                
+                // Log each mapping being submitted
+                $('#field-mappings .field-mapping-row').each(function(index) {
+                    var webhookField = $(this).find('.webhook-field-select').val();
+                    var wpField = $(this).find('.wp-field-select').val();
+                    var defaultValue = $(this).find('input[type="text"]').val();
+                    console.log('Mapping ' + index + ':', webhookField, '→', wpField, '(default:', defaultValue + ')');
+                });
+                
+                // Count mappings with webhook field selected
+                var validMappings = 0;
+                $('#field-mappings .field-mapping-row').each(function() {
+                    if ($(this).find('.webhook-field-select').val() && $(this).find('.wp-field-select').val()) {
+                        validMappings++;
+                    }
+                });
+                console.log('Valid mappings being submitted:', validMappings);
             });
             
             // Post type change
@@ -713,18 +737,24 @@ class NexJob_SEO_Webhook_Admin {
                 }
             }
             
-            // Sanitize field mappings - allow unlimited mappings including duplicates
+            // Sanitize field mappings - allow unlimited mappings including duplicate webhook fields
             $field_mappings = array();
             if (isset($_POST['field_mappings']) && is_array($_POST['field_mappings'])) {
                 $mapping_counter = 0; // Use counter instead of original index to avoid gaps
                 foreach ($_POST['field_mappings'] as $index => $mapping) {
+                    error_log("NexJob Debug: Processing mapping[$index]: " . json_encode($mapping));
+                    
+                    // Allow mappings as long as both fields are selected (allow duplicate webhook fields)
                     if (is_array($mapping) && !empty($mapping['webhook_field']) && !empty($mapping['wp_field'])) {
                         $field_mappings[$mapping_counter] = array(
                             'webhook_field' => sanitize_text_field($mapping['webhook_field'] ?? ''),
                             'wp_field' => sanitize_text_field($mapping['wp_field'] ?? ''),
                             'default_value' => sanitize_textarea_field($mapping['default_value'] ?? '')
                         );
+                        error_log("NexJob Debug: Added mapping #$mapping_counter: {$field_mappings[$mapping_counter]['webhook_field']} → {$field_mappings[$mapping_counter]['wp_field']}");
                         $mapping_counter++;
+                    } else {
+                        error_log("NexJob Debug: Skipped mapping[$index] - missing webhook_field or wp_field");
                     }
                 }
             }
