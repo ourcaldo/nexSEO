@@ -16,21 +16,15 @@ class NexJob_SEO_Admin {
     private $logger;
     private $post_processor;
     private $cron_manager;
-    private $auto_featured_image;
-    private $template_manager;
-    private $batch_processor;
     
     /**
      * Constructor
      */
-    public function __construct($settings, $logger, $post_processor, $cron_manager, $auto_featured_image = null, $template_manager = null, $batch_processor = null) {
+    public function __construct($settings, $logger, $post_processor, $cron_manager) {
         $this->settings = $settings;
         $this->logger = $logger;
         $this->post_processor = $post_processor;
         $this->cron_manager = $cron_manager;
-        $this->auto_featured_image = $auto_featured_image;
-        $this->template_manager = $template_manager;
-        $this->batch_processor = $batch_processor;
         $this->init_hooks();
     }
     
@@ -42,19 +36,6 @@ class NexJob_SEO_Admin {
         add_action('admin_init', array($this, 'handle_admin_actions'));
         add_action('admin_notices', array($this, 'show_admin_notices'));
         
-        // Add automation menu if available
-        if (extension_loaded('gd')) {
-            add_action('admin_menu', array($this, 'add_automation_menu'), 11);
-            
-            // Initialize automation admin action handlers
-            global $nexjob_seo_plugin;
-            if ($nexjob_seo_plugin && method_exists($nexjob_seo_plugin, 'get_automation_admin')) {
-                $automation_admin = $nexjob_seo_plugin->get_automation_admin();
-                if ($automation_admin) {
-                    add_action('admin_init', array($automation_admin, 'handle_automation_admin_actions'));
-                }
-            }
-        }
         
         // Add manual process buttons to post list pages
         $post_types = $this->settings->get('post_types');
@@ -101,29 +82,6 @@ class NexJob_SEO_Admin {
         // Featured Images submenu removed - now handled through Automations interface
     }
     
-    /**
-     * Add automation menu items
-     */
-    public function add_automation_menu() {
-        // Automation submenu
-        add_submenu_page(
-            'nexjob-seo',
-            __('Featured Image Automations', 'nexjob-seo'),
-            __('Featured Image Automations', 'nexjob-seo'),
-            'manage_options',
-            'nexjob-seo-automations',
-            array($this, 'automations_page')
-        );
-        
-        // Add automation admin submenu pages if automation admin is available
-        global $nexjob_seo_plugin;
-        if ($nexjob_seo_plugin && method_exists($nexjob_seo_plugin, 'get_automation_admin')) {
-            $automation_admin = $nexjob_seo_plugin->get_automation_admin();
-            if ($automation_admin) {
-                $automation_admin->add_automation_admin_menu();
-            }
-        }
-    }
     
     /**
      * Main admin page
@@ -133,11 +91,6 @@ class NexJob_SEO_Admin {
         $stats = $this->get_processing_stats();
         $cron_info = $this->cron_manager->get_cron_info();
         
-        // Get featured images statistics if available
-        $featured_image_stats = null;
-        if ($this->auto_featured_image) {
-            $featured_image_stats = $this->auto_featured_image->get_statistics();
-        }
         ?>
         <div class="wrap">
             <h1><?php _e('NexJob SEO Automation', 'nexjob-seo'); ?></h1>
@@ -198,38 +151,6 @@ class NexJob_SEO_Admin {
                         </div>
                     </div>
                     
-                    <!-- Featured Images Widget -->
-                    <?php if ($featured_image_stats): ?>
-                    <div class="postbox">
-                        <h2 class="hndle"><?php _e('Featured Images Status', 'nexjob-seo'); ?></h2>
-                        <div class="inside">
-                            <table class="widefat">
-                                <tbody>
-                                    <tr>
-                                        <td><?php _e('Posts without Featured Images', 'nexjob-seo'); ?></td>
-                                        <td><strong><?php echo esc_html($featured_image_stats['posts_without_featured_images']); ?></strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td><?php _e('Total Generations', 'nexjob-seo'); ?></td>
-                                        <td><strong><?php echo esc_html($featured_image_stats['total_generations']); ?></strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td><?php _e('Success Rate', 'nexjob-seo'); ?></td>
-                                        <td><strong><?php echo esc_html($featured_image_stats['success_rate']); ?>%</strong></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <?php if ($featured_image_stats['posts_without_featured_images'] > 0): ?>
-                            <p style="margin-top: 15px;">
-                                <a href="<?php echo esc_url(admin_url('admin.php?page=nexjob-seo-featured-images')); ?>" 
-                                   class="button button-primary">
-                                    <?php _e('Manage Featured Images', 'nexjob-seo'); ?>
-                                </a>
-                            </p>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <?php endif; ?>
                     
                     <!-- Actions Widget -->
                     <div class="postbox">
@@ -248,13 +169,6 @@ class NexJob_SEO_Admin {
                                     <?php _e('Force Regenerate All', 'nexjob-seo'); ?>
                                 </a>
                             </p>
-                            <?php if ($this->auto_featured_image && $featured_image_stats['posts_without_featured_images'] > 0): ?>
-                            <p>
-                                <button type="button" id="generate-featured-images-bulk" class="button button-secondary">
-                                    <?php _e('Generate Featured Images', 'nexjob-seo'); ?>
-                                </button>
-                            </p>
-                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -532,24 +446,4 @@ class NexJob_SEO_Admin {
         return $stats;
     }
     
-    /**
-     * Automations page
-     */
-    public function automations_page() {
-        // Check if automation admin is available
-        $automation_admin = null;
-        
-        // Get the automation admin from the global plugin instance
-        global $nexjob_seo_plugin;
-        if ($nexjob_seo_plugin && method_exists($nexjob_seo_plugin, 'get_automation_admin')) {
-            $automation_admin = $nexjob_seo_plugin->get_automation_admin();
-        }
-        
-        if ($automation_admin) {
-            $automation_admin->render_automation_page();
-        } else {
-            echo '<div class="wrap"><h1>' . __('Featured Image Automations', 'nexjob-seo') . '</h1>';
-            echo '<p>' . __('Automation system is not available. Please ensure GD library is installed.', 'nexjob-seo') . '</p></div>';
-        }
-    }
 }
