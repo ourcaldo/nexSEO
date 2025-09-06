@@ -89,17 +89,7 @@ class NexJob_SEO_Admin {
             array($this, 'logs_page')
         );
         
-        // Featured Images submenu (if component is available)
-        if ($this->auto_featured_image && $this->template_manager) {
-            add_submenu_page(
-                'nexjob-seo',
-                __('Featured Images', 'nexjob-seo'),
-                __('Featured Images', 'nexjob-seo'),
-                'manage_options',
-                'nexjob-seo-featured-images',
-                array($this, 'featured_images_page')
-            );
-        }
+        // Featured Images submenu removed - now handled through Automations interface
     }
     
     /**
