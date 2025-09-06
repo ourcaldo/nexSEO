@@ -68,6 +68,84 @@ class NexJob_SEO_Auto_Featured_Image {
 
             $this->logger->log("Starting featured image generation for post {$post_id}: {$post->post_title}");
 
+            // Get automation for this post type
+            $automation_manager = new NexJob_SEO_Automation_Manager($this->logger);
+            $automation = $automation_manager->get_automation_for_post_type($post->post_type);
+            
+            if (!$automation) {
+                // Fallback to old template method
+                return $this->generate_featured_image_legacy($post_id);
+            }
+
+            // Get template path from automation
+            $templates = $this->template_manager->get_available_templates();
+            if (!isset($templates[$automation->template_name])) {
+                throw new Exception("Template not found: {$automation->template_name}");
+            }
+            
+            $template_path = $templates[$automation->template_name]['path'];
+
+            // Prepare text content
+            $title_text = $this->prepare_title_text($post->post_title, $automation->max_title_length);
+            
+            // Prepare configuration from automation
+            $config = array(
+                'font_size' => $automation->font_size,
+                'font_color' => $automation->font_color,
+                'text_align' => $automation->text_align,
+                'text_area' => array(
+                    'x' => $automation->text_area_x,
+                    'y' => $automation->text_area_y,
+                    'width' => $automation->text_area_width,
+                    'height' => $automation->text_area_height
+                )
+            );
+            
+            // Generate image
+            $generated_image = $this->image_processor->generate_image_with_text(
+                $template_path,
+                $title_text,
+                $config
+            );
+
+            if (!$generated_image) {
+                throw new Exception("Failed to generate image for post {$post_id}");
+            }
+
+            // Upload to WordPress media library
+            $attachment_id = $this->upload_to_media_library($generated_image, $post);
+            
+            if (!$attachment_id) {
+                throw new Exception("Failed to upload generated image to media library");
+            }
+
+            // Set as featured image
+            if (set_post_thumbnail($post_id, $attachment_id)) {
+                $this->logger->log("Successfully generated and set featured image for post {$post_id} using automation {$automation->name}");
+                
+                // Clean up temporary file
+                if (file_exists($generated_image)) {
+                    unlink($generated_image);
+                }
+                
+                return $attachment_id;
+            } else {
+                throw new Exception("Failed to set featured image for post {$post_id}");
+            }
+
+        } catch (Exception $e) {
+            $this->logger->log("Error generating featured image for post {$post_id}: " . $e->getMessage(), 'error');
+            return false;
+        }
+    }
+    
+    /**
+     * Legacy method for generating featured images without automation
+     */
+    private function generate_featured_image_legacy($post_id) {
+        try {
+            $post = get_post($post_id);
+            
             // Get template for this post
             $template_path = $this->template_manager->get_template_for_post($post);
             if (!$template_path) {
@@ -97,7 +175,7 @@ class NexJob_SEO_Auto_Featured_Image {
 
             // Set as featured image
             if (set_post_thumbnail($post_id, $attachment_id)) {
-                $this->logger->log("Successfully generated and set featured image for post {$post_id}");
+                $this->logger->log("Successfully generated and set featured image for post {$post_id} (legacy method)");
                 
                 // Clean up temporary file
                 if (file_exists($generated_image)) {
@@ -118,7 +196,7 @@ class NexJob_SEO_Auto_Featured_Image {
     /**
      * Prepare title text for image overlay
      */
-    private function prepare_title_text($title) {
+    private function prepare_title_text($title, $max_length = null) {
         // Remove HTML tags
         $title = strip_tags($title);
         

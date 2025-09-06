@@ -37,6 +37,8 @@ class NexJob_SEO_Automation_Admin {
         add_action('wp_ajax_get_automation', array($this, 'handle_get_automation'));
         add_action('wp_ajax_test_automation', array($this, 'handle_test_automation'));
         add_action('wp_ajax_process_existing_posts', array($this, 'handle_process_existing_posts'));
+        add_action('wp_ajax_nexjob_generate_preview', array($this, 'handle_generate_preview'));
+        add_action('wp_ajax_nexjob_upload_template', array($this, 'handle_upload_template'));
     }
     
     /**
@@ -374,13 +376,27 @@ class NexJob_SEO_Automation_Admin {
                                         <label for="template_name"><?php _e('Template', 'nexjob-seo'); ?></label>
                                     </th>
                                     <td>
-                                        <select id="template_name" name="template_name">
+                                        <div class="template-gallery" style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
                                             <?php foreach ($templates as $template_id => $template_data): ?>
-                                                <option value="<?php echo esc_attr($template_id); ?>" <?php selected($automation->template_name, $template_id); ?>>
-                                                    <?php echo esc_html($template_data['name']); ?>
-                                                </option>
+                                                <div class="template-option" style="text-align: center; border: 2px solid #ddd; padding: 10px; border-radius: 5px; cursor: pointer;" 
+                                                     data-template="<?php echo esc_attr($template_id); ?>" 
+                                                     <?php if ($automation->template_name == $template_id): ?>style="border-color: #0073aa; background: #f0f8ff;"<?php endif; ?>>
+                                                    <img src="<?php echo esc_url($template_data['url']); ?>" 
+                                                         style="width: 120px; height: 80px; object-fit: cover; border: 1px solid #ccc; border-radius: 3px;" 
+                                                         alt="<?php echo esc_attr($template_data['name']); ?>">
+                                                    <div style="margin-top: 5px; font-weight: bold; font-size: 12px;">
+                                                        <?php echo esc_html($template_data['name']); ?>
+                                                    </div>
+                                                </div>
                                             <?php endforeach; ?>
-                                        </select>
+                                        </div>
+                                        <input type="hidden" id="template_name" name="template_name" value="<?php echo esc_attr($automation->template_name); ?>">
+                                        
+                                        <div style="margin-top: 15px;">
+                                            <button type="button" id="upload_custom_template" class="button"><?php _e('Upload Custom Template', 'nexjob-seo'); ?></button>
+                                            <input type="file" id="custom_template_file" accept="image/*" style="display: none;">
+                                            <p class="description"><?php _e('Upload your own template image (PNG, JPG, minimum 800x600px)', 'nexjob-seo'); ?></p>
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr>
@@ -452,7 +468,16 @@ class NexJob_SEO_Automation_Admin {
                         </div>
                         
                         <div id="preview_container" style="border: 1px solid #ddd; padding: 20px; background: #f9f9f9; text-align: center;">
-                            <p><?php _e('Click "Generate Preview" to see your featured image preview', 'nexjob-seo'); ?></p>
+                            <?php if (isset($templates[$automation->template_name])): ?>
+                                <div class="current-template-preview">
+                                    <h4><?php _e('Current Template Preview:', 'nexjob-seo'); ?></h4>
+                                    <img src="<?php echo esc_url($templates[$automation->template_name]['url']); ?>" 
+                                         style="max-width: 400px; height: auto; border: 1px solid #ccc; margin-bottom: 10px;">
+                                    <p><?php _e('This is how your template looks. Text will be overlaid when generating featured images.', 'nexjob-seo'); ?></p>
+                                </div>
+                            <?php else: ?>
+                                <p><?php _e('No template selected. Please select a template above.', 'nexjob-seo'); ?></p>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -478,6 +503,47 @@ class NexJob_SEO_Automation_Admin {
         
         <script>
         jQuery(document).ready(function($) {
+            // Template selection
+            $('.template-option').click(function() {
+                $('.template-option').css('border-color', '#ddd').css('background', 'transparent');
+                $(this).css('border-color', '#0073aa').css('background', '#f0f8ff');
+                $('#template_name').val($(this).data('template'));
+                
+                // Update preview to show selected template
+                var templateImg = $(this).find('img').attr('src');
+                $('#preview_container').html('<div class="current-template-preview"><h4>Current Template Preview:</h4><img src="' + templateImg + '" style="max-width: 400px; height: auto; border: 1px solid #ccc; margin-bottom: 10px;"><p>This is how your template looks. Text will be overlaid when generating featured images.</p></div>');
+            });
+            
+            // Upload custom template
+            $('#upload_custom_template').click(function() {
+                $('#custom_template_file').click();
+            });
+            
+            $('#custom_template_file').change(function() {
+                if (this.files.length > 0) {
+                    var formData = new FormData();
+                    formData.append('action', 'nexjob_upload_template');
+                    formData.append('template_file', this.files[0]);
+                    formData.append('nonce', '<?php echo wp_create_nonce('upload_template'); ?>');
+                    
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function(response) {
+                            if (response.success) {
+                                alert('Template uploaded successfully! Please refresh the page to see it.');
+                                location.reload();
+                            } else {
+                                alert('Upload failed: ' + response.data.message);
+                            }
+                        }
+                    });
+                }
+            });
+            
             // Generate preview
             $('#generate_preview').click(function() {
                 var title = $('#preview_title').val();
@@ -698,12 +764,110 @@ class NexJob_SEO_Automation_Admin {
         
         // Test with sample text
         $test_title = "Sample Test Title for Automation";
-        $result = $this->auto_featured_image->generate_featured_image($test_title, $automation);
+        // For testing, we need to create a dummy post
+        $dummy_post_id = wp_insert_post(array(
+            'post_title' => $test_title,
+            'post_content' => 'Test content',
+            'post_status' => 'draft',
+            'post_type' => 'post'
+        ));
+        
+        if ($dummy_post_id) {
+            $result = $this->auto_featured_image->generate_featured_image($dummy_post_id);
+            // Clean up dummy post
+            wp_delete_post($dummy_post_id, true);
+        } else {
+            $result = false;
+        }
         
         if ($result) {
             wp_send_json_success(array('image_path' => $result));
         } else {
             wp_send_json_error(__('Failed to generate test image.', 'nexjob-seo'));
         }
+    }
+    
+    /**
+     * Handle AJAX preview generation
+     */
+    public function handle_generate_preview() {
+        if (!wp_verify_nonce($_POST['nonce'], 'automation_preview')) {
+            wp_die('Security check failed');
+        }
+        
+        $automation_id = intval($_POST['automation_id']);
+        $sample_title = sanitize_text_field($_POST['sample_title']);
+        
+        $automation = $this->automation_manager->get_automation($automation_id);
+        if (!$automation) {
+            wp_send_json_error(array('message' => 'Automation not found'));
+        }
+        
+        // Get template path
+        $templates = $this->template_manager->get_available_templates();
+        if (!isset($templates[$automation->template_name])) {
+            wp_send_json_error(array('message' => 'Template not found'));
+        }
+        
+        $template_path = $templates[$automation->template_name]['path'];
+        
+        // Prepare configuration
+        $config = array(
+            'font_size' => $automation->font_size,
+            'font_color' => $automation->font_color,
+            'text_align' => $automation->text_align,
+            'text_area' => array(
+                'x' => $automation->text_area_x,
+                'y' => $automation->text_area_y,
+                'width' => $automation->text_area_width,
+                'height' => $automation->text_area_height
+            )
+        );
+        
+        // Generate preview image  
+        $settings = new NexJob_SEO_Settings();
+        $image_processor = new NexJob_SEO_Image_Processor($settings, $this->logger);
+        $generated_image = $image_processor->generate_image_with_text($template_path, $sample_title, $config);
+        
+        if (!$generated_image) {
+            wp_send_json_error(array('message' => 'Failed to generate preview image'));
+        }
+        
+        // Upload to media library as temporary preview
+        $upload_dir = wp_upload_dir();
+        $preview_filename = 'preview-' . uniqid() . '.png';
+        $preview_path = $upload_dir['path'] . '/' . $preview_filename;
+        
+        if (copy($generated_image, $preview_path)) {
+            $preview_url = $upload_dir['url'] . '/' . $preview_filename;
+            
+            // Clean up temp file
+            unlink($generated_image);
+            
+            wp_send_json_success(array('preview_url' => $preview_url));
+        } else {
+            wp_send_json_error(array('message' => 'Failed to save preview image'));
+        }
+    }
+    
+    /**
+     * Handle AJAX template upload
+     */
+    public function handle_upload_template() {
+        if (!wp_verify_nonce($_POST['nonce'], 'upload_template')) {
+            wp_die('Security check failed');
+        }
+        
+        if (!isset($_FILES['template_file'])) {
+            wp_send_json_error(array('message' => 'No file uploaded'));
+        }
+        
+        $result = $this->template_manager->upload_custom_template($_FILES['template_file']);
+        
+        if (is_wp_error($result)) {
+            wp_send_json_error(array('message' => $result->get_error_message()));
+        }
+        
+        wp_send_json_success(array('message' => 'Template uploaded successfully', 'template' => $result));
     }
 }
