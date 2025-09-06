@@ -196,10 +196,6 @@ class NexJob_SEO_Plugin {
         return $this->webhook_admin;
     }
     
-    public function get_automation_admin() {
-        return $this->automation_admin;
-    }
-    
     public function get_automation_manager() {
         return $this->automation_manager;
     }

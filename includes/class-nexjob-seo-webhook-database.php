@@ -58,19 +58,19 @@ class NexJob_SEO_Webhook_Database {
             FOREIGN KEY (webhook_id) REFERENCES {$webhooks_table} (id) ON DELETE CASCADE
         ) $charset_collate;";
         
-        // Check if tables already exist first - DO NOT CREATE IF THEY EXIST
+        // Check if tables already exist first
         if (self::tables_exist()) {
             return;
         }
         
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         
-        // Remove the UNIQUE KEY line that's causing duplicate key errors
-        $webhooks_sql_clean = "CREATE TABLE IF NOT EXISTS {$webhooks_table} (
+        // Create tables using dbDelta (without foreign keys for compatibility)
+        $webhooks_sql_safe = "CREATE TABLE IF NOT EXISTS {$webhooks_table} (
             id int(11) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
             description text DEFAULT NULL,
-            webhook_token varchar(100) NOT NULL UNIQUE,
+            webhook_token varchar(100) NOT NULL,
             status enum('active', 'inactive') DEFAULT 'inactive',
             post_type varchar(50) DEFAULT NULL,
             field_mappings longtext DEFAULT NULL,
@@ -79,16 +79,13 @@ class NexJob_SEO_Webhook_Database {
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
+            UNIQUE KEY webhook_token (webhook_token),
             KEY status (status),
             KEY post_type (post_type),
             KEY created_at (created_at)
         ) $charset_collate;";
         
-        // Create webhooks table
-        dbDelta($webhooks_sql_clean);
-        
-        // Create webhook data table without foreign key constraint
-        $webhook_data_sql_no_fk = "CREATE TABLE IF NOT EXISTS {$webhook_data_table} (
+        $webhook_data_sql_safe = "CREATE TABLE IF NOT EXISTS {$webhook_data_table} (
             id int(11) NOT NULL AUTO_INCREMENT,
             webhook_id int(11) NOT NULL,
             data longtext NOT NULL,
@@ -105,7 +102,8 @@ class NexJob_SEO_Webhook_Database {
             KEY created_at (created_at)
         ) $charset_collate;";
         
-        dbDelta($webhook_data_sql_no_fk);
+        dbDelta($webhooks_sql_safe);
+        dbDelta($webhook_data_sql_safe);
         
         error_log('NexJob SEO: Database tables created successfully');
         

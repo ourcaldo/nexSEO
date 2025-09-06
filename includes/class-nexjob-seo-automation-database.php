@@ -19,7 +19,7 @@ class NexJob_SEO_Automation_Database {
         
         // Automation configurations table
         $automation_table = $wpdb->prefix . 'nexjob_featured_image_automations';
-        $automation_sql = "CREATE TABLE $automation_table (
+        $automation_sql = "CREATE TABLE IF NOT EXISTS $automation_table (
             id int(11) NOT NULL AUTO_INCREMENT,
             name varchar(255) NOT NULL,
             status enum('active','inactive') DEFAULT 'active',
