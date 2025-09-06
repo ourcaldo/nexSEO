@@ -462,21 +462,24 @@ class NexJob_SEO_Automation_Admin {
             if (wp_verify_nonce($_POST['automation_config_nonce'], 'configure_automation')) {
                 $automation_id = intval($_POST['automation_id']);
                 
-                // Collect form data
-                $data = array();
-                if (isset($_POST['name'])) $data['name'] = sanitize_text_field($_POST['name']);
-                if (isset($_POST['status'])) $data['status'] = sanitize_text_field($_POST['status']);
-                if (isset($_POST['post_types'])) $data['post_types'] = array_map('sanitize_text_field', $_POST['post_types']);
-                if (isset($_POST['template_name'])) $data['template_name'] = sanitize_text_field($_POST['template_name']);
-                if (isset($_POST['font_size'])) $data['font_size'] = intval($_POST['font_size']);
-                if (isset($_POST['font_color'])) $data['font_color'] = sanitize_text_field($_POST['font_color']);
-                if (isset($_POST['text_align'])) $data['text_align'] = sanitize_text_field($_POST['text_align']);
-                if (isset($_POST['text_area_x'])) $data['text_area_x'] = intval($_POST['text_area_x']);
-                if (isset($_POST['text_area_y'])) $data['text_area_y'] = intval($_POST['text_area_y']);
-                if (isset($_POST['text_area_width'])) $data['text_area_width'] = intval($_POST['text_area_width']);
-                if (isset($_POST['text_area_height'])) $data['text_area_height'] = intval($_POST['text_area_height']);
+                // Collect form data with defaults
+                $data = array(
+                    'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : 'Untitled Automation',
+                    'status' => isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'inactive',
+                    'post_types' => isset($_POST['post_types']) ? array_map('sanitize_text_field', $_POST['post_types']) : array('post'),
+                    'template_name' => isset($_POST['template_name']) ? sanitize_text_field($_POST['template_name']) : 'default.png',
+                    'font_size' => isset($_POST['font_size']) ? intval($_POST['font_size']) : 48,
+                    'font_color' => isset($_POST['font_color']) ? sanitize_text_field($_POST['font_color']) : '#FFFFFF',
+                    'text_align' => isset($_POST['text_align']) ? sanitize_text_field($_POST['text_align']) : 'center',
+                    'text_area_x' => isset($_POST['text_area_x']) ? intval($_POST['text_area_x']) : 50,
+                    'text_area_y' => isset($_POST['text_area_y']) ? intval($_POST['text_area_y']) : 100,
+                    'text_area_width' => isset($_POST['text_area_width']) ? intval($_POST['text_area_width']) : 1100,
+                    'text_area_height' => isset($_POST['text_area_height']) ? intval($_POST['text_area_height']) : 430,
+                    'max_title_length' => isset($_POST['max_title_length']) ? intval($_POST['max_title_length']) : 80,
+                    'apply_to_existing' => isset($_POST['apply_to_existing']) ? 1 : 0
+                );
                 
-                $result = $this->automation_manager->update_automation($automation_id, $data);
+                $result = $this->automation_manager->update_automation_config($automation_id, $data);
                 
                 if ($result) {
                     add_action('admin_notices', function() {

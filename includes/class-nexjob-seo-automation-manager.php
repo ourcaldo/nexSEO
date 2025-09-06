@@ -56,15 +56,51 @@ class NexJob_SEO_Automation_Manager {
     }
     
     /**
-     * Create new automation
+     * Create new automation with basic info
      */
-    public function create_automation($data) {
+    public function create_automation($name, $description = '') {
         global $wpdb;
         
         $table = $wpdb->prefix . 'nexjob_featured_image_automations';
         
-        // Prepare data
+        // Create basic automation entry with defaults
         $insert_data = array(
+            'name' => sanitize_text_field($name),
+            'status' => 'inactive',
+            'post_types' => json_encode(array('post')),
+            'template_name' => 'default.png',
+            'font_size' => 48,
+            'font_color' => '#FFFFFF',
+            'text_align' => 'center',
+            'text_area_x' => 50,
+            'text_area_y' => 100,
+            'text_area_width' => 1100,
+            'text_area_height' => 430,
+            'max_title_length' => 80,
+            'apply_to_existing' => 0
+        );
+        
+        $result = $wpdb->insert($table, $insert_data);
+        
+        if ($result !== false) {
+            $automation_id = $wpdb->insert_id;
+            $this->logger->log("Created automation: " . $name, 'info');
+            return array('success' => true, 'automation_id' => $automation_id);
+        }
+        
+        return array('success' => false, 'error' => 'Database insert failed');
+    }
+    
+    /**
+     * Update automation with full configuration
+     */
+    public function update_automation_config($automation_id, $data) {
+        global $wpdb;
+        
+        $table = $wpdb->prefix . 'nexjob_featured_image_automations';
+        
+        // Prepare update data
+        $update_data = array(
             'name' => sanitize_text_field($data['name']),
             'status' => sanitize_text_field($data['status']),
             'post_types' => json_encode($data['post_types']),
@@ -80,11 +116,11 @@ class NexJob_SEO_Automation_Manager {
             'apply_to_existing' => intval($data['apply_to_existing'])
         );
         
-        $result = $wpdb->insert($table, $insert_data);
+        $result = $wpdb->update($table, $update_data, array('id' => $automation_id));
         
         if ($result !== false) {
-            $this->logger->log("Created automation: " . $data['name'], 'info');
-            return $wpdb->insert_id;
+            $this->logger->log("Updated automation ID {$automation_id}", 'info');
+            return true;
         }
         
         return false;
