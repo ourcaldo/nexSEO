@@ -27,6 +27,9 @@ class NexJob_SEO_Automation_Admin {
      * Initialize hooks
      */
     private function init_hooks() {
+        // Add the admin init hook for form processing - MISSING!
+        add_action('admin_init', array($this, 'handle_automation_admin_actions'));
+        
         add_action('wp_ajax_create_automation', array($this, 'handle_create_automation'));
         add_action('wp_ajax_update_automation', array($this, 'handle_update_automation'));
         add_action('wp_ajax_delete_automation', array($this, 'handle_delete_automation'));
@@ -59,6 +62,115 @@ class NexJob_SEO_Automation_Admin {
             'nexjob-seo-configure-automation',
             array($this, 'configure_automation_page')
         );
+    }
+    
+    /**
+     * Handle automation admin actions - EXACT COPY OF WEBHOOK PATTERN WITH DEBUG
+     */
+    public function handle_automation_admin_actions() {
+        error_log('AUTOMATION DEBUG: handle_automation_admin_actions called');
+        
+        if (!current_user_can('manage_options')) {
+            error_log('AUTOMATION DEBUG: user lacks permissions');
+            return;
+        }
+        
+        // Create automation - EXACT COPY OF WEBHOOK PATTERN
+        if (isset($_POST['automation_nonce'])) {
+            error_log('AUTOMATION DEBUG: automation_nonce found in POST');
+            $automation_nonce = $_POST['automation_nonce'];
+            if (wp_verify_nonce($automation_nonce, 'create_automation')) {
+                error_log('AUTOMATION DEBUG: nonce verified successfully');
+                $name = sanitize_text_field($_POST['automation_name']);
+                $description = sanitize_textarea_field($_POST['automation_description']);
+                
+                error_log('AUTOMATION DEBUG: calling create_automation with name: ' . $name);
+                $result = $this->automation_manager->create_automation($name, $description);
+                
+                error_log('AUTOMATION DEBUG: create_automation result: ' . print_r($result, true));
+                
+                if ($result['success']) {
+                    $redirect_url = admin_url('admin.php?page=nexjob-seo-configure-automation&automation_id=' . $result['automation_id'] . '&message=created');
+                    error_log('AUTOMATION DEBUG: redirecting to: ' . $redirect_url);
+                    wp_redirect($redirect_url);
+                    exit;
+                } else {
+                    error_log('AUTOMATION DEBUG: creation failed');
+                    add_action('admin_notices', function() {
+                        echo '<div class="notice notice-error"><p>' . __('Failed to create automation.', 'nexjob-seo') . '</p></div>';
+                    });
+                }
+            } else {
+                error_log('AUTOMATION DEBUG: nonce verification failed');
+            }
+        }
+        
+        // Configure automation
+        if (isset($_POST['automation_config_nonce'])) {
+            error_log('AUTOMATION DEBUG: automation_config_nonce found in POST');
+            if (wp_verify_nonce($_POST['automation_config_nonce'], 'configure_automation')) {
+                $automation_id = intval($_POST['automation_id']);
+                
+                // Collect form data with defaults
+                $data = array(
+                    'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : 'Untitled Automation',
+                    'status' => isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'inactive',
+                    'post_types' => isset($_POST['post_types']) ? array_map('sanitize_text_field', $_POST['post_types']) : array('post'),
+                    'template_name' => isset($_POST['template_name']) ? sanitize_text_field($_POST['template_name']) : 'default.png',
+                    'font_size' => isset($_POST['font_size']) ? intval($_POST['font_size']) : 48,
+                    'font_color' => isset($_POST['font_color']) ? sanitize_text_field($_POST['font_color']) : '#FFFFFF',
+                    'text_align' => isset($_POST['text_align']) ? sanitize_text_field($_POST['text_align']) : 'center',
+                    'text_area_x' => isset($_POST['text_area_x']) ? intval($_POST['text_area_x']) : 50,
+                    'text_area_y' => isset($_POST['text_area_y']) ? intval($_POST['text_area_y']) : 100,
+                    'text_area_width' => isset($_POST['text_area_width']) ? intval($_POST['text_area_width']) : 1100,
+                    'text_area_height' => isset($_POST['text_area_height']) ? intval($_POST['text_area_height']) : 430,
+                    'max_title_length' => isset($_POST['max_title_length']) ? intval($_POST['max_title_length']) : 80,
+                    'apply_to_existing' => isset($_POST['apply_to_existing']) ? 1 : 0
+                );
+                
+                $result = $this->automation_manager->update_automation_config($automation_id, $data);
+                
+                if ($result) {
+                    add_action('admin_notices', function() {
+                        echo '<div class="notice notice-success"><p>' . __('Automation updated successfully.', 'nexjob-seo') . '</p></div>';
+                    });
+                } else {
+                    add_action('admin_notices', function() {
+                        echo '<div class="notice notice-error"><p>' . __('Failed to update automation.', 'nexjob-seo') . '</p></div>';
+                    });
+                }
+            }
+        }
+        
+        // Handle GET actions (delete, toggle, etc.)
+        if (isset($_GET['action']) && isset($_GET['automation_id']) && isset($_GET['nonce'])) {
+            error_log('AUTOMATION DEBUG: GET action found: ' . $_GET['action']);
+            $action = $_GET['action'];
+            $automation_id = intval($_GET['automation_id']);
+            $nonce = $_GET['nonce'];
+            
+            if (!wp_verify_nonce($nonce, 'automation_action')) {
+                wp_die(__('Security check failed.', 'nexjob-seo'));
+            }
+            
+            switch ($action) {
+                case 'toggle_automation':
+                    $automation = $this->automation_manager->get_automation($automation_id);
+                    if ($automation) {
+                        $new_status = $automation->status === 'active' ? 'inactive' : 'active';
+                        $this->automation_manager->update_automation($automation_id, array('status' => $new_status));
+                    }
+                    wp_redirect(admin_url('admin.php?page=nexjob-seo-automations'));
+                    exit;
+                    break;
+                    
+                case 'delete_automation':
+                    $this->automation_manager->delete_automation($automation_id);
+                    wp_redirect(admin_url('admin.php?page=nexjob-seo-automations&message=deleted'));
+                    exit;
+                    break;
+            }
+        }
     }
     
     /**
@@ -432,96 +544,7 @@ class NexJob_SEO_Automation_Admin {
         <?php
     }
     
-    /**
-     * Handle automation admin actions
-     */
-    public function handle_automation_admin_actions() {
-        if (!current_user_can('manage_options')) return;
-        
-        // Create automation
-        if (isset($_POST['automation_nonce'])) {
-            if (wp_verify_nonce($_POST['automation_nonce'], 'create_automation')) {
-                $name = sanitize_text_field($_POST['automation_name']);
-                $description = sanitize_textarea_field($_POST['automation_description']);
-                
-                $result = $this->automation_manager->create_automation($name, $description);
-                
-                if ($result['success']) {
-                    wp_redirect(admin_url('admin.php?page=nexjob-seo-configure-automation&automation_id=' . $result['automation_id'] . '&message=created'));
-                    exit;
-                } else {
-                    add_action('admin_notices', function() {
-                        echo '<div class="notice notice-error"><p>' . __('Failed to create automation.', 'nexjob-seo') . '</p></div>';
-                    });
-                }
-            }
-        }
-        
-        // Configure automation
-        if (isset($_POST['automation_config_nonce'])) {
-            if (wp_verify_nonce($_POST['automation_config_nonce'], 'configure_automation')) {
-                $automation_id = intval($_POST['automation_id']);
-                
-                // Collect form data with defaults
-                $data = array(
-                    'name' => isset($_POST['name']) ? sanitize_text_field($_POST['name']) : 'Untitled Automation',
-                    'status' => isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'inactive',
-                    'post_types' => isset($_POST['post_types']) ? array_map('sanitize_text_field', $_POST['post_types']) : array('post'),
-                    'template_name' => isset($_POST['template_name']) ? sanitize_text_field($_POST['template_name']) : 'default.png',
-                    'font_size' => isset($_POST['font_size']) ? intval($_POST['font_size']) : 48,
-                    'font_color' => isset($_POST['font_color']) ? sanitize_text_field($_POST['font_color']) : '#FFFFFF',
-                    'text_align' => isset($_POST['text_align']) ? sanitize_text_field($_POST['text_align']) : 'center',
-                    'text_area_x' => isset($_POST['text_area_x']) ? intval($_POST['text_area_x']) : 50,
-                    'text_area_y' => isset($_POST['text_area_y']) ? intval($_POST['text_area_y']) : 100,
-                    'text_area_width' => isset($_POST['text_area_width']) ? intval($_POST['text_area_width']) : 1100,
-                    'text_area_height' => isset($_POST['text_area_height']) ? intval($_POST['text_area_height']) : 430,
-                    'max_title_length' => isset($_POST['max_title_length']) ? intval($_POST['max_title_length']) : 80,
-                    'apply_to_existing' => isset($_POST['apply_to_existing']) ? 1 : 0
-                );
-                
-                $result = $this->automation_manager->update_automation_config($automation_id, $data);
-                
-                if ($result) {
-                    add_action('admin_notices', function() {
-                        echo '<div class="notice notice-success"><p>' . __('Automation updated successfully.', 'nexjob-seo') . '</p></div>';
-                    });
-                } else {
-                    add_action('admin_notices', function() {
-                        echo '<div class="notice notice-error"><p>' . __('Failed to update automation.', 'nexjob-seo') . '</p></div>';
-                    });
-                }
-            }
-        }
-        
-        // Handle URL actions
-        if (isset($_GET['action'])) {
-            $action = $_GET['action'];
-            $automation_id = intval($_GET['automation_id'] ?? 0);
-            $nonce = $_GET['nonce'] ?? '';
-            
-            if (!wp_verify_nonce($nonce, 'automation_action')) {
-                wp_die(__('Security check failed.', 'nexjob-seo'));
-            }
-            
-            switch ($action) {
-                case 'toggle_automation':
-                    $automation = $this->automation_manager->get_automation($automation_id);
-                    if ($automation) {
-                        $new_status = $automation->status === 'active' ? 'inactive' : 'active';
-                        $this->automation_manager->update_automation($automation_id, array('status' => $new_status));
-                    }
-                    wp_redirect(admin_url('admin.php?page=nexjob-seo-automations'));
-                    exit;
-                    break;
-                    
-                case 'delete_automation':
-                    $this->automation_manager->delete_automation($automation_id);
-                    wp_redirect(admin_url('admin.php?page=nexjob-seo-automations&message=deleted'));
-                    exit;
-                    break;
-            }
-        }
-    }
+    // Duplicate method removed - using the one with debug logging instead
     
     // Old modal code and AJAX handlers removed - now using page-based interface
     
