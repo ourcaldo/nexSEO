@@ -88,17 +88,9 @@ class NexJob_SEO_Auto_Featured_Image {
             // Prepare text content
             $title_text = $this->prepare_title_text($post->post_title, $automation->max_title_length);
             
-            // Prepare configuration from automation
+            // Prepare simplified configuration
             $config = array(
-                'font_size' => $automation->font_size,
-                'font_color' => $automation->font_color,
-                'text_align' => $automation->text_align,
-                'text_area' => array(
-                    'x' => $automation->text_area_x,
-                    'y' => $automation->text_area_y,
-                    'width' => $automation->text_area_width,
-                    'height' => $automation->text_area_height
-                )
+                'font_color' => $automation->font_color
             );
             
             // Generate image
