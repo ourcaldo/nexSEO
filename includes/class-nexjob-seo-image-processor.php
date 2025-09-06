@@ -101,7 +101,7 @@ class NexJob_SEO_Image_Processor {
     }
 
     /**
-     * Add text overlay to image
+     * Add text overlay to image - simplified and centered
      */
     private function add_text_overlay($image, $text, $config) {
         $width = imagesx($image);
@@ -111,105 +111,84 @@ class NexJob_SEO_Image_Processor {
         $result_image = imagecreatetruecolor($width, $height);
         imagecopy($result_image, $image, 0, 0, 0, 0, $width, $height);
 
-        // Parse text configuration
-        $text_area = isset($config['text_area']) ? $config['text_area'] : array(
-            'x' => 50,
-            'y' => 100,
-            'width' => $width - 100,
-            'height' => $height - 200
-        );
-
-        $font_size = isset($config['font_size']) ? $config['font_size'] : 48;
+        // Get font color
         $font_color = isset($config['font_color']) ? $config['font_color'] : '#FFFFFF';
-        $line_height = isset($config['line_height']) ? $config['line_height'] : 1.2;
-        $text_align = isset($config['text_align']) ? $config['text_align'] : 'center';
-
+        
         // Convert hex color to RGB
         $color = $this->hex_to_rgb($font_color);
         $text_color = imagecolorallocate($result_image, $color['r'], $color['g'], $color['b']);
+        $shadow_color = imagecolorallocate($result_image, 0, 0, 0); // Black shadow
 
-        // Use built-in font (imagestring) for simplicity
-        // In a production environment, you might want to use TTF fonts with imagettftext
-        $this->draw_text_simple($result_image, $text, $text_area, $text_color, $font_size, $text_align);
+        // Draw centered text with proportional size
+        $this->draw_centered_text($result_image, $text, $text_color, $shadow_color, $width, $height);
 
         return $result_image;
     }
 
     /**
-     * Draw text using improved rendering with larger, more visible text
+     * Draw large, centered text that's proportional to image size
      */
-    private function draw_text_simple($image, $text, $text_area, $color, $font_size, $align) {
-        // Use larger font size - map to bigger built-in fonts
-        $gd_font = 5; // Use largest built-in font
+    private function draw_centered_text($image, $text, $color, $shadow_color, $width, $height) {
+        // Calculate proportional font scale based on image size
+        // For a 1200x800 image, we want decent sized text
+        $base_scale = min($width, $height) / 200; // Scale factor based on smaller dimension
+        $font_scale = max(3, intval($base_scale)); // Minimum scale of 3, proportional to image size
         
-        // For even bigger text, we'll draw multiple times with slight offsets
-        $text_scale = max(1, intval($font_size / 16)); // Scale factor for larger text
+        // Use largest built-in GD font
+        $gd_font = 5;
         
-        // Calculate character dimensions for largest font
+        // Calculate character dimensions
         $base_char_width = imagefontwidth($gd_font);
         $base_char_height = imagefontheight($gd_font);
         
-        // Effective dimensions with scaling
-        $char_width = $base_char_width * $text_scale;
-        $char_height = $base_char_height * $text_scale;
+        // Effective dimensions with scaling  
+        $char_width = $base_char_width * $font_scale;
+        $char_height = $base_char_height * $font_scale;
         
-        // Calculate characters per line (be more conservative for readability)
-        $chars_per_line = max(10, floor($text_area['width'] / $char_width * 0.8));
-        
-        // Word wrap text
+        // Word wrap text to fit 80% of image width
+        $usable_width = $width * 0.8;
+        $chars_per_line = max(8, floor($usable_width / $char_width));
         $wrapped_text = wordwrap($text, $chars_per_line, "\n", true);
         $lines = explode("\n", $wrapped_text);
         
-        // Limit to maximum 4 lines for better readability
-        if (count($lines) > 4) {
-            $lines = array_slice($lines, 0, 4);
-            $lines[3] = rtrim($lines[3]) . '...';
+        // Limit to 3 lines maximum
+        if (count($lines) > 3) {
+            $lines = array_slice($lines, 0, 3);
+            $lines[2] = rtrim($lines[2]) . '...';
         }
         
-        // Calculate starting position with better spacing
-        $line_spacing = $char_height * 1.3; // Add line spacing
+        // Calculate total text block height
+        $line_spacing = $char_height * 1.2;
         $total_text_height = count($lines) * $line_spacing;
-        $start_y = $text_area['y'] + ($text_area['height'] - $total_text_height) / 2;
         
-        // Add text shadow/outline for better visibility
-        $shadow_color = imagecolorallocate($image, 0, 0, 0); // Black shadow
+        // Center vertically
+        $start_y = ($height - $total_text_height) / 2;
         
-        // Draw each line
+        // Draw each line centered
         foreach ($lines as $line_num => $line) {
             $line = trim($line);
             if (empty($line)) continue;
             
             $line_width = strlen($line) * $char_width;
             
-            // Calculate x position based on alignment
-            switch ($align) {
-                case 'center':
-                    $x = $text_area['x'] + ($text_area['width'] - $line_width) / 2;
-                    break;
-                case 'right':
-                    $x = $text_area['x'] + $text_area['width'] - $line_width;
-                    break;
-                case 'left':
-                default:
-                    $x = $text_area['x'];
-                    break;
-            }
-            
+            // Center horizontally
+            $x = ($width - $line_width) / 2;
             $y = $start_y + ($line_num * $line_spacing);
             
-            // Draw text with improved visibility
-            $this->draw_enhanced_text($image, $gd_font, $x, $y, $line, $color, $shadow_color, $text_scale);
+            // Draw text with shadow for visibility
+            $this->draw_scaled_text($image, $gd_font, $x, $y, $line, $color, $shadow_color, $font_scale);
         }
     }
     
     /**
-     * Draw enhanced text with shadow and scaling for better visibility
+     * Draw scaled text with shadow for maximum visibility
      */
-    private function draw_enhanced_text($image, $font, $x, $y, $text, $color, $shadow_color, $scale) {
-        // Draw shadow first (offset by 2 pixels)
+    private function draw_scaled_text($image, $font, $x, $y, $text, $color, $shadow_color, $scale) {
+        // Draw shadow with bigger offset for larger text
+        $shadow_offset = max(2, $scale);
         for ($sx = 0; $sx < $scale; $sx++) {
             for ($sy = 0; $sy < $scale; $sy++) {
-                imagestring($image, $font, $x + $sx + 2, $y + $sy + 2, $text, $shadow_color);
+                imagestring($image, $font, $x + $sx + $shadow_offset, $y + $sy + $shadow_offset, $text, $shadow_color);
             }
         }
         
@@ -239,7 +218,7 @@ class NexJob_SEO_Image_Processor {
     }
 
     /**
-     * Optimize image quality and size
+     * Optimize image quality - keep original dimensions
      */
     public function optimize_image($image_path) {
         if (!file_exists($image_path)) {
@@ -251,36 +230,8 @@ class NexJob_SEO_Image_Processor {
             return false;
         }
 
-        // Get target dimensions
-        $target_width = $this->settings->get('featured_image_width', 1200);
-        $target_height = $this->settings->get('featured_image_height', 630);
-        
-        $current_width = imagesx($image);
-        $current_height = imagesy($image);
-
-        // Resize if needed
-        if ($current_width != $target_width || $current_height != $target_height) {
-            $resized_image = imagecreatetruecolor($target_width, $target_height);
-            
-            // Preserve transparency for PNG
-            imagesavealpha($resized_image, true);
-            $transparent = imagecolorallocatealpha($resized_image, 0, 0, 0, 127);
-            imagefill($resized_image, 0, 0, $transparent);
-            
-            // Resize with resampling for better quality
-            imagecopyresampled(
-                $resized_image, $image,
-                0, 0, 0, 0,
-                $target_width, $target_height,
-                $current_width, $current_height
-            );
-            
-            imagedestroy($image);
-            $image = $resized_image;
-        }
-
-        // Save optimized image
-        $quality = $this->settings->get('featured_image_quality', 85);
+        // Keep original dimensions - don't resize
+        // Just save with compression
         $success = imagepng($image, $image_path, 9);
         
         imagedestroy($image);
