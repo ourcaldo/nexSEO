@@ -352,7 +352,7 @@ class NexJob_SEO_Webhook_Admin {
                             <!-- Field Mappings -->
                             <div id="field-mappings-container">
                                 <h3><?php _e('Field Mappings', 'nexjob-seo'); ?></h3>
-                                <p><?php _e('Map webhook data fields to WordPress post fields:', 'nexjob-seo'); ?></p>
+                                <p><?php _e('Map webhook data fields to WordPress post fields. You can create unlimited mappings and map the same webhook field to multiple WordPress fields (e.g., use one description field for both excerpt and SEO description):', 'nexjob-seo'); ?></p>
                                 
                                 <div id="field-mappings">
                                     <?php
@@ -486,7 +486,7 @@ class NexJob_SEO_Webhook_Admin {
                 }
             });
             
-            // Add field mapping
+            // Add field mapping - unlimited mappings supported, same webhook field can map to multiple WP fields
             $('#add-field-mapping').click(function() {
                 var html = '<div class="field-mapping-row">' +
                     '<select name="field_mappings[' + mappingIndex + '][webhook_field]" class="webhook-field-select">' +
@@ -508,6 +508,7 @@ class NexJob_SEO_Webhook_Admin {
                 populateWpFieldSelect($newRow.find('.wp-field-select'));
                 
                 mappingIndex++;
+                console.log('Added field mapping row #' + mappingIndex + '. Total rows: ' + $('#field-mappings .field-mapping-row').length);
             });
             
             // Remove field mapping
@@ -555,15 +556,17 @@ class NexJob_SEO_Webhook_Admin {
                 console.log('Updated all webhook dropdowns with', latestWebhookFields.length, 'fields');
             }
             
-            // Populate a single webhook field dropdown
+            // Populate a single webhook field dropdown - allow reusing same field multiple times
             function populateWebhookFieldSelect($select) {
                 var currentValue = $select.val();
                 $select.empty().append('<option value=""><?php _e('Select webhook field', 'nexjob-seo'); ?></option>');
                 
+                // Allow all fields to be selectable in every dropdown (no restrictions)
                 latestWebhookFields.forEach(function(field) {
                     $select.append('<option value="' + field + '">' + field + '</option>');
                 });
                 
+                // Restore previous selection if it still exists
                 if (currentValue && latestWebhookFields.indexOf(currentValue) !== -1) {
                     $select.val(currentValue);
                 }
@@ -692,16 +695,18 @@ class NexJob_SEO_Webhook_Admin {
             error_log('NexJob Debug: Field mappings submitted: ' . count($_POST['field_mappings'] ?? array()));
             error_log('NexJob Debug: Field mappings data: ' . print_r($_POST['field_mappings'] ?? array(), true));
             
-            // Sanitize field mappings
+            // Sanitize field mappings - allow unlimited mappings including duplicates
             $field_mappings = array();
             if (isset($_POST['field_mappings']) && is_array($_POST['field_mappings'])) {
+                $mapping_counter = 0; // Use counter instead of original index to avoid gaps
                 foreach ($_POST['field_mappings'] as $index => $mapping) {
                     if (is_array($mapping) && !empty($mapping['webhook_field']) && !empty($mapping['wp_field'])) {
-                        $field_mappings[$index] = array(
+                        $field_mappings[$mapping_counter] = array(
                             'webhook_field' => sanitize_text_field($mapping['webhook_field'] ?? ''),
                             'wp_field' => sanitize_text_field($mapping['wp_field'] ?? ''),
                             'default_value' => sanitize_textarea_field($mapping['default_value'] ?? '')
                         );
+                        $mapping_counter++;
                     }
                 }
             }
