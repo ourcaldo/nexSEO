@@ -43,7 +43,7 @@ class NexJob_SEO_Automation_Database {
         dbDelta($automation_sql);
         
         // Create default automation if none exists
-        $existing = $wpdb->get_var("SELECT COUNT(*) FROM $automation_table");
+        $existing = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM %s", $automation_table));
         if ($existing == 0) {
             $wpdb->insert($automation_table, array(
                 'name' => 'Default Automation',
@@ -70,7 +70,7 @@ class NexJob_SEO_Automation_Database {
         global $wpdb;
         
         $automation_table = $wpdb->prefix . 'nexjob_featured_image_automations';
-        $wpdb->query("DROP TABLE IF EXISTS $automation_table");
+        $wpdb->query($wpdb->prepare("DROP TABLE IF EXISTS %s", $automation_table));
     }
     
     /**
@@ -81,7 +81,7 @@ class NexJob_SEO_Automation_Database {
         
         $automation_table = $wpdb->prefix . 'nexjob_featured_image_automations';
         
-        $automation_exists = $wpdb->get_var("SHOW TABLES LIKE '$automation_table'") === $automation_table;
+        $automation_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $automation_table)) === $automation_table;
         
         return array(
             'automations' => $automation_exists
