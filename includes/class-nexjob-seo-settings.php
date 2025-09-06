@@ -39,7 +39,20 @@ class NexJob_SEO_Settings {
             'required_fields' => array(
                 'nexjob_nama_perusahaan',
                 'nexjob_lokasi_kota'
-            )
+            ),
+            
+            // Auto Featured Images settings
+            'auto_featured_images_enabled' => true,
+            'auto_featured_images_post_types' => array('post', 'page', 'lowongan-kerja'),
+            'auto_featured_images_max_title_length' => 80,
+            'template_min_width' => 800,
+            'template_min_height' => 600,
+            'template_max_size' => 5242880, // 5MB
+            'featured_image_width' => 1200,
+            'featured_image_height' => 630,
+            'featured_image_quality' => 85,
+            'batch_processing_size' => 10,
+            'batch_processing_timeout' => 300
         );
         
         $this->settings = wp_parse_args(get_option(self::OPTION_NAME, array()), $defaults);
@@ -107,6 +120,46 @@ class NexJob_SEO_Settings {
             array($this, 'required_fields_callback'),
             'nexjob-seo-settings',
             'nexjob_seo_general'
+        );
+        
+        // Auto Featured Images section
+        add_settings_section(
+            'nexjob_seo_featured_images',
+            __('Auto Featured Images', 'nexjob-seo'),
+            array($this, 'featured_images_section_callback'),
+            'nexjob-seo-settings'
+        );
+        
+        add_settings_field(
+            'auto_featured_images_enabled',
+            __('Enable Auto Featured Images', 'nexjob-seo'),
+            array($this, 'auto_featured_images_enabled_callback'),
+            'nexjob-seo-settings',
+            'nexjob_seo_featured_images'
+        );
+        
+        add_settings_field(
+            'auto_featured_images_post_types',
+            __('Featured Images Post Types', 'nexjob-seo'),
+            array($this, 'auto_featured_images_post_types_callback'),
+            'nexjob-seo-settings',
+            'nexjob_seo_featured_images'
+        );
+        
+        add_settings_field(
+            'auto_featured_images_max_title_length',
+            __('Max Title Length', 'nexjob-seo'),
+            array($this, 'auto_featured_images_max_title_length_callback'),
+            'nexjob-seo-settings',
+            'nexjob_seo_featured_images'
+        );
+        
+        add_settings_field(
+            'featured_image_dimensions',
+            __('Image Dimensions', 'nexjob-seo'),
+            array($this, 'featured_image_dimensions_callback'),
+            'nexjob-seo-settings',
+            'nexjob_seo_featured_images'
         );
     }
     
@@ -255,5 +308,61 @@ class NexJob_SEO_Settings {
         $fields_text = is_array($required_fields) ? implode("\n", $required_fields) : '';
         echo '<textarea name="' . self::OPTION_NAME . '[required_fields]" rows="4" cols="50" placeholder="Enter field names (one per line)...">' . esc_textarea($fields_text) . '</textarea>';
         echo '<p class="description">' . __('Required custom field keys (one per line). Leave empty if no required fields.', 'nexjob-seo') . '</p>';
+    }
+    
+    /**
+     * Featured Images section callback
+     */
+    public function featured_images_section_callback() {
+        echo '<p>' . __('Configure auto featured image generation settings.', 'nexjob-seo') . '</p>';
+    }
+    
+    /**
+     * Auto featured images enabled callback
+     */
+    public function auto_featured_images_enabled_callback() {
+        $value = $this->get('auto_featured_images_enabled', true);
+        echo '<input type="checkbox" name="' . self::OPTION_NAME . '[auto_featured_images_enabled]" value="1" ' . checked(1, $value, false) . '>';
+        echo '<p class="description">' . __('Automatically generate featured images for posts that don\'t have them.', 'nexjob-seo') . '</p>';
+    }
+    
+    /**
+     * Auto featured images post types callback
+     */
+    public function auto_featured_images_post_types_callback() {
+        $selected = $this->get('auto_featured_images_post_types', array('post', 'page'));
+        $post_types = get_post_types(array('public' => true), 'objects');
+        
+        foreach ($post_types as $post_type) {
+            $checked = in_array($post_type->name, $selected) ? 'checked' : '';
+            echo '<label>';
+            echo '<input type="checkbox" name="' . self::OPTION_NAME . '[auto_featured_images_post_types][]" value="' . esc_attr($post_type->name) . '" ' . $checked . '>';
+            echo ' ' . esc_html($post_type->label);
+            echo '</label><br>';
+        }
+        echo '<p class="description">' . __('Select which post types should have auto featured images generated.', 'nexjob-seo') . '</p>';
+    }
+    
+    /**
+     * Auto featured images max title length callback
+     */
+    public function auto_featured_images_max_title_length_callback() {
+        $value = $this->get('auto_featured_images_max_title_length', 80);
+        echo '<input type="number" name="' . self::OPTION_NAME . '[auto_featured_images_max_title_length]" value="' . esc_attr($value) . '" min="20" max="200">';
+        echo '<p class="description">' . __('Maximum number of characters for post titles in featured images.', 'nexjob-seo') . '</p>';
+    }
+    
+    /**
+     * Featured image dimensions callback
+     */
+    public function featured_image_dimensions_callback() {
+        $width = $this->get('featured_image_width', 1200);
+        $height = $this->get('featured_image_height', 630);
+        $quality = $this->get('featured_image_quality', 85);
+        
+        echo '<label>Width: <input type="number" name="' . self::OPTION_NAME . '[featured_image_width]" value="' . esc_attr($width) . '" min="400" max="2000"></label><br>';
+        echo '<label>Height: <input type="number" name="' . self::OPTION_NAME . '[featured_image_height]" value="' . esc_attr($height) . '" min="300" max="1500"></label><br>';
+        echo '<label>Quality: <input type="number" name="' . self::OPTION_NAME . '[featured_image_quality]" value="' . esc_attr($quality) . '" min="50" max="100">%</label>';
+        echo '<p class="description">' . __('Output dimensions and quality for generated featured images.', 'nexjob-seo') . '</p>';
     }
 }

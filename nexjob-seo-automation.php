@@ -44,6 +44,12 @@ require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-field-mapper.php
 require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-webhook-processor.php';
 require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-webhook-admin.php';
 
+// Auto Featured Images classes
+require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-template-manager.php';
+require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-image-processor.php';
+require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-auto-featured-image.php';
+require_once NEXJOB_SEO_PLUGIN_DIR . 'includes/class-nexjob-seo-batch-processor.php';
+
 // Initialize the plugin
 function nexjob_seo_init() {
     new NexJob_SEO_Plugin();
