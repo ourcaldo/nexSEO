@@ -42,6 +42,11 @@ class NexJob_SEO_Admin {
         add_action('admin_init', array($this, 'handle_admin_actions'));
         add_action('admin_notices', array($this, 'show_admin_notices'));
         
+        // Add automation menu if available
+        if (extension_loaded('gd')) {
+            add_action('admin_menu', array($this, 'add_automation_menu'), 11);
+        }
+        
         // Add manual process buttons to post list pages
         $post_types = $this->settings->get('post_types');
         foreach ($post_types as $post_type) {

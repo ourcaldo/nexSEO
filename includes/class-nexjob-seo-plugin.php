@@ -88,7 +88,7 @@ class NexJob_SEO_Plugin {
             $this->webhook_admin = new NexJob_SEO_Webhook_Admin($this->logger, $this->webhook_manager, $this->webhook_data, $this->field_mapper, $this->webhook_processor);
             
             // Initialize automation admin if featured images are available
-            if (extension_loaded('gd')) {
+            if (extension_loaded('gd') && $this->automation_manager) {
                 $this->automation_admin = new NexJob_SEO_Automation_Admin(
                     $this->logger,
                     $this->automation_manager,

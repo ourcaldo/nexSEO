@@ -48,7 +48,7 @@ class NexJob_SEO_Automation_Admin {
             
             <div class="automation-controls" style="margin-bottom: 20px;">
                 <button id="create-automation-btn" class="button button-primary">
-                    <?php _e('Create New Automation', 'nexjob-seo'); ?>
+                    <?php _e('Add New', 'nexjob-seo'); ?>
                 </button>
                 <button id="upload-template-btn" class="button">
                     <?php _e('Upload Template', 'nexjob-seo'); ?>
