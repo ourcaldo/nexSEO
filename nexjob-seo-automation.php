@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name: NexJob SEO Automation
+ * Plugin Name: nexSEO
  * Plugin URI: https://nexjob.com
- * Description: Automated SEO meta title, description, and slug generation for job posts with RankMath integration
- * Version: 1.2.7
+ * Description: Automated SEO meta title, description, and slug generation for job posts with RankMath integration and advanced webhook system
+ * Version: 1.3.0
  * Requires at least: 5.0
  * Tested up to: 6.4
  * Requires PHP: 7.4
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('NEXJOB_SEO_VERSION', '1.2.7');
+define('NEXJOB_SEO_VERSION', '1.3.0');
 define('NEXJOB_SEO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('NEXJOB_SEO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('NEXJOB_SEO_PLUGIN_FILE', __FILE__);

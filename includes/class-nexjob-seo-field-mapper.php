@@ -120,9 +120,39 @@ class NexJob_SEO_Field_Mapper {
             case 'post_excerpt':
                 return sanitize_textarea_field($value);
                 
+            case 'post_name':
+                // Generate slug from title if empty, otherwise sanitize provided slug
+                if (empty($value)) {
+                    return null; // Let WordPress auto-generate from title
+                }
+                return sanitize_title($value);
+                
             case 'post_status':
                 $allowed_statuses = array('draft', 'publish', 'private', 'pending');
                 return in_array($value, $allowed_statuses) ? $value : 'draft';
+                
+            case 'post_date':
+                // Validate and format date
+                if (empty($value)) {
+                    return null; // Use current time
+                }
+                $timestamp = strtotime($value);
+                if ($timestamp === false) {
+                    return null;
+                }
+                return date('Y-m-d H:i:s', $timestamp);
+                
+            case 'post_author':
+                // Validate user ID
+                $user_id = intval($value);
+                if ($user_id > 0 && get_user_by('id', $user_id)) {
+                    return $user_id;
+                }
+                return null; // Use current user
+                
+            case 'comment_status':
+            case 'ping_status':
+                return in_array($value, array('open', 'closed')) ? $value : 'closed';
                 
             case 'featured_image':
                 return esc_url_raw($value);
@@ -190,6 +220,13 @@ class NexJob_SEO_Field_Mapper {
                 'required' => true,
                 'group' => 'Core Fields'
             ),
+            'post_name' => array(
+                'label' => 'Post Slug (URL)',
+                'type' => 'text',
+                'required' => false,
+                'group' => 'Core Fields',
+                'description' => 'Custom URL slug for the post'
+            ),
             'post_content' => array(
                 'label' => 'Post Content',
                 'type' => 'textarea',
@@ -206,6 +243,33 @@ class NexJob_SEO_Field_Mapper {
                 'label' => 'Post Status',
                 'type' => 'select',
                 'options' => array('draft' => 'Draft', 'publish' => 'Published', 'private' => 'Private', 'pending' => 'Pending'),
+                'required' => false,
+                'group' => 'Core Fields'
+            ),
+            'post_date' => array(
+                'label' => 'Publication Date',
+                'type' => 'datetime',
+                'required' => false,
+                'group' => 'Core Fields',
+                'description' => 'Format: YYYY-MM-DD HH:MM:SS'
+            ),
+            'post_author' => array(
+                'label' => 'Post Author (User ID)',
+                'type' => 'number',
+                'required' => false,
+                'group' => 'Core Fields'
+            ),
+            'comment_status' => array(
+                'label' => 'Comment Status',
+                'type' => 'select',
+                'options' => array('open' => 'Open', 'closed' => 'Closed'),
+                'required' => false,
+                'group' => 'Core Fields'
+            ),
+            'ping_status' => array(
+                'label' => 'Ping Status',
+                'type' => 'select',
+                'options' => array('open' => 'Open', 'closed' => 'Closed'),
                 'required' => false,
                 'group' => 'Core Fields'
             ),
@@ -229,82 +293,142 @@ class NexJob_SEO_Field_Mapper {
             );
         }
         
-        // Add common meta fields
-        $common_meta_fields = $this->get_common_meta_fields($post_type);
-        foreach ($common_meta_fields as $meta_key => $meta_info) {
+        // Add ALL meta fields for this post type from database
+        $all_meta_fields = $this->get_all_meta_fields_for_post_type($post_type);
+        foreach ($all_meta_fields as $meta_key => $meta_info) {
             $fields['meta_' . $meta_key] = array(
                 'label' => $meta_info['label'],
                 'type' => $meta_info['type'],
                 'required' => false,
-                'group' => 'Meta Fields'
+                'group' => 'Meta Fields',
+                'description' => isset($meta_info['description']) ? $meta_info['description'] : ''
             );
         }
         
         $this->logger->log("Retrieved WordPress fields for post type", 'info', null, null, array(
             'post_type' => $post_type,
             'total_fields' => count($fields),
-            'meta_fields' => count($common_meta_fields),
-            'field_keys' => array_keys($fields)
+            'meta_fields' => count($all_meta_fields),
+            'core_fields' => count(array_filter($fields, function($field) { return $field['group'] === 'Core Fields'; })),
+            'taxonomy_fields' => count(array_filter($fields, function($field) { return $field['group'] === 'Taxonomies'; }))
         ));
         
         return $fields;
     }
     
     /**
-     * Get common meta fields for a post type
+     * Get ALL meta fields for a specific post type from database
      */
-    private function get_common_meta_fields($post_type) {
+    private function get_all_meta_fields_for_post_type($post_type) {
         global $wpdb;
         $meta_fields = array();
         
-        // SEO meta fields (RankMath, Yoast, etc.)
-        $meta_fields['rank_math_title'] = array('label' => 'SEO Title (RankMath)', 'type' => 'text');
-        $meta_fields['rank_math_description'] = array('label' => 'SEO Description (RankMath)', 'type' => 'textarea');
-        $meta_fields['_yoast_wpseo_title'] = array('label' => 'SEO Title (Yoast)', 'type' => 'text');
-        $meta_fields['_yoast_wpseo_metadesc'] = array('label' => 'SEO Description (Yoast)', 'type' => 'textarea');
-        
-        // Get actual meta fields used by this post type from database
-        $actual_meta_fields = $wpdb->get_results($wpdb->prepare(
-            "SELECT DISTINCT pm.meta_key 
+        // Get ALL meta fields used by this post type from database - including private fields
+        $all_meta_fields = $wpdb->get_results($wpdb->prepare(
+            "SELECT DISTINCT pm.meta_key, COUNT(pm.meta_id) as usage_count
              FROM {$wpdb->postmeta} pm 
              INNER JOIN {$wpdb->posts} p ON pm.post_id = p.ID 
              WHERE p.post_type = %s 
-             AND pm.meta_key NOT LIKE '\_%' 
              AND pm.meta_key NOT LIKE '%revision%'
+             AND pm.meta_key NOT LIKE '%autosave%'
+             AND pm.meta_key != ''
              AND pm.meta_value != ''
-             ORDER BY pm.meta_key",
+             GROUP BY pm.meta_key
+             ORDER BY usage_count DESC, pm.meta_key ASC",
             $post_type
         ));
         
-        foreach ($actual_meta_fields as $meta_field) {
+        foreach ($all_meta_fields as $meta_field) {
             $key = $meta_field->meta_key;
             $label = $this->format_meta_field_label($key);
-            $meta_fields[$key] = array('label' => $label, 'type' => 'text');
+            $usage_count = $meta_field->usage_count;
+            
+            // Determine field type based on meta key pattern
+            $field_type = $this->determine_meta_field_type($key);
+            
+            $meta_fields[$key] = array(
+                'label' => $label . " (used {$usage_count}x)",
+                'type' => $field_type,
+                'usage_count' => $usage_count,
+                'description' => $this->get_meta_field_description($key)
+            );
         }
         
-        // Custom post type specific fields
-        if ($post_type === 'lowongan-kerja' || $post_type === 'job') {
-            $meta_fields['nexjob_nama_perusahaan'] = array('label' => 'Company Name', 'type' => 'text');
-            $meta_fields['nexjob_lokasi_kota'] = array('label' => 'City Location', 'type' => 'text');
-            $meta_fields['nexjob_gaji'] = array('label' => 'Salary', 'type' => 'text');
-            $meta_fields['nexjob_tipe_kerja'] = array('label' => 'Work Type', 'type' => 'text');
-            $meta_fields['company_name'] = array('label' => 'Company Name', 'type' => 'text');
-            $meta_fields['job_location'] = array('label' => 'Job Location', 'type' => 'text');
-            $meta_fields['job_salary'] = array('label' => 'Job Salary', 'type' => 'text');
-            $meta_fields['job_type'] = array('label' => 'Job Type', 'type' => 'text');
-            $meta_fields['job_category'] = array('label' => 'Job Category', 'type' => 'text');
-            $meta_fields['application_deadline'] = array('label' => 'Application Deadline', 'type' => 'date');
-        }
-        
-        // Common useful custom fields
-        $meta_fields['price'] = array('label' => 'Price', 'type' => 'text');
-        $meta_fields['address'] = array('label' => 'Address', 'type' => 'text');
-        $meta_fields['phone'] = array('label' => 'Phone', 'type' => 'text');
-        $meta_fields['email'] = array('label' => 'Email', 'type' => 'email');
-        $meta_fields['website'] = array('label' => 'Website', 'type' => 'url');
-        $meta_fields['description'] = array('label' => 'Additional Description', 'type' => 'textarea');
+        $this->logger->log("Retrieved all meta fields for post type", 'info', null, null, array(
+            'post_type' => $post_type,
+            'total_meta_fields' => count($meta_fields),
+            'sample_fields' => array_slice(array_keys($meta_fields), 0, 10)
+        ));
         
         return $meta_fields;
+    }
+    
+    /**
+     * Determine field type based on meta key patterns
+     */
+    private function determine_meta_field_type($meta_key) {
+        $key_lower = strtolower($meta_key);
+        
+        // URL fields
+        if (preg_match('/(url|link|website|image)/', $key_lower)) {
+            return 'url';
+        }
+        
+        // Email fields
+        if (preg_match('/(email|mail)/', $key_lower)) {
+            return 'email';
+        }
+        
+        // Number fields
+        if (preg_match('/(price|cost|salary|gaji|number|count|id)/', $key_lower)) {
+            return 'number';
+        }
+        
+        // Date fields
+        if (preg_match('/(date|time|deadline|expires?)/', $key_lower)) {
+            return 'date';
+        }
+        
+        // Textarea fields (longer content)
+        if (preg_match('/(description|content|text|detail|summary|note)/', $key_lower)) {
+            return 'textarea';
+        }
+        
+        // Default to text
+        return 'text';
+    }
+    
+    /**
+     * Get description for meta field based on common patterns
+     */
+    private function get_meta_field_description($meta_key) {
+        $descriptions = array(
+            // SEO plugins
+            'rank_math_title' => 'RankMath SEO title override',
+            'rank_math_description' => 'RankMath SEO meta description',
+            '_yoast_wpseo_title' => 'Yoast SEO title override',
+            '_yoast_wpseo_metadesc' => 'Yoast SEO meta description',
+            '_thumbnail_id' => 'WordPress featured image attachment ID',
+            
+            // Common WordPress
+            '_edit_lock' => 'WordPress edit lock timestamp',
+            '_edit_last' => 'Last user to edit this post',
+            '_wp_page_template' => 'Custom page template file',
+            
+            // ACF
+            '_wp_attachment_metadata' => 'Attachment metadata (images, files)',
+        );
+        
+        if (isset($descriptions[$meta_key])) {
+            return $descriptions[$meta_key];
+        }
+        
+        // Generate description based on patterns
+        if (strpos($meta_key, '_') === 0) {
+            return 'WordPress internal/plugin meta field';
+        }
+        
+        return 'Custom meta field for this post type';
     }
     
     /**
