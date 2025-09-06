@@ -1,6 +1,6 @@
 # Overview
 
-NexJob SEO Automation Plugin is a comprehensive WordPress plugin designed to automate SEO optimization tasks for job-related content and provide advanced webhook integration capabilities. The plugin has been successfully refactored from a monolithic 1289-line single file into a clean, modular architecture with 14 specialized components. It provides automated SEO title and description generation, slug optimization, comprehensive logging capabilities, and a powerful webhook system for external data integration and automatic post creation.
+nexSEO Plugin is a comprehensive WordPress plugin designed to automate SEO optimization tasks for job-related content and provide advanced webhook integration capabilities. The plugin has been successfully refactored from a monolithic 1289-line single file into a clean, modular architecture with 14 specialized components. It provides automated SEO title and description generation, slug optimization, comprehensive logging capabilities, and a powerful webhook system for external data integration and automatic post creation.
 
 # User Preferences
 

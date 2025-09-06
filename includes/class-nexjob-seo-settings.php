@@ -238,7 +238,7 @@ class NexJob_SEO_Settings {
      * Settings section callback
      */
     public function general_section_callback() {
-        echo '<p>' . __('Configure general settings for NexJob SEO Automation.', 'nexjob-seo') . '</p>';
+        echo '<p>' . __('Configure general settings for nexSEO.', 'nexjob-seo') . '</p>';
     }
     
     /**

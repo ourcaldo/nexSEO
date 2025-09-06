@@ -50,8 +50,8 @@ class NexJob_SEO_Admin {
     public function add_admin_menu() {
         // Main menu page - Create standalone top-level menu
         add_menu_page(
-            __('NexJob SEO Automation', 'nexjob-seo'),
-            __('NexJob SEO', 'nexjob-seo'),
+            __('nexSEO', 'nexjob-seo'),
+            __('nexSEO', 'nexjob-seo'),
             'manage_options',
             'nexjob-seo',
             array($this, 'admin_page'),
@@ -93,7 +93,7 @@ class NexJob_SEO_Admin {
         
         ?>
         <div class="wrap">
-            <h1><?php _e('NexJob SEO Automation', 'nexjob-seo'); ?></h1>
+            <h1><?php _e('nexSEO', 'nexjob-seo'); ?></h1>
             
             <div class="dashboard-widgets-wrap">
                 <div class="metabox-holder">
@@ -183,7 +183,7 @@ class NexJob_SEO_Admin {
     public function settings_page() {
         ?>
         <div class="wrap">
-            <h1><?php _e('NexJob SEO Settings', 'nexjob-seo'); ?></h1>
+            <h1><?php _e('nexSEO Settings', 'nexjob-seo'); ?></h1>
             <form method="post" action="options.php">
                 <?php
                 settings_fields('nexjob_seo_settings_group');
@@ -201,7 +201,7 @@ class NexJob_SEO_Admin {
     public function logs_page() {
         ?>
         <div class="wrap">
-            <h1><?php _e('NexJob SEO Logs', 'nexjob-seo'); ?></h1>
+            <h1><?php _e('nexSEO Logs', 'nexjob-seo'); ?></h1>
             
             <div class="tablenav top">
                 <div class="alignleft actions">
@@ -383,7 +383,7 @@ class NexJob_SEO_Admin {
             if (isset($stats[$screen->post_type]) && $stats[$screen->post_type]['remaining'] > 0) {
                 echo '<div class="notice notice-info"><p>';
                 echo sprintf(
-                    __('NexJob SEO Automation: %d of %d %s posts processed properly. %d remaining.', 'nexjob-seo'),
+                    __('nexSEO: %d of %d %s posts processed properly. %d remaining.', 'nexjob-seo'),
                     $stats[$screen->post_type]['processed'],
                     $stats[$screen->post_type]['total'],
                     $screen->post_type,
