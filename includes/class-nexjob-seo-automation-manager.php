@@ -13,6 +13,25 @@ class NexJob_SEO_Automation_Manager {
     
     public function __construct($logger) {
         $this->logger = $logger;
+        $this->ensure_database_tables();
+    }
+    
+    /**
+     * Ensure required database tables exist
+     */
+    private function ensure_database_tables() {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'nexjob_featured_image_automations';
+        
+        // Check if table exists
+        $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'") === $table_name;
+        
+        if (!$table_exists) {
+            $this->logger->log('Database table missing, creating automation tables', 'info');
+            // Create the tables using the database class
+            NexJob_SEO_Automation_Database::create_tables();
+        }
     }
     
     /**
@@ -23,19 +42,22 @@ class NexJob_SEO_Automation_Manager {
         
         $table = $wpdb->prefix . 'nexjob_featured_image_automations';
         
-        $where = '';
         if ($status) {
-            $where = $wpdb->prepare("WHERE status = %s", $status);
+            $sql = $wpdb->prepare("SELECT * FROM $table WHERE status = %s ORDER BY created_at DESC", $status);
+        } else {
+            $sql = "SELECT * FROM $table ORDER BY created_at DESC";
         }
         
-        $results = $wpdb->get_results("SELECT * FROM $table $where ORDER BY created_at DESC");
+        $results = $wpdb->get_results($sql);
         
         // Decode post_types JSON
-        foreach ($results as $automation) {
-            $automation->post_types = json_decode($automation->post_types, true);
+        if ($results) {
+            foreach ($results as $automation) {
+                $automation->post_types = json_decode($automation->post_types, true);
+            }
         }
         
-        return $results;
+        return $results ? $results : array();
     }
     
     /**

@@ -1,0 +1,34 @@
+[06-Sep-2025 05:28:06 UTC] PHP Notice:  Fungsi wpdb::prepare ditulis secara <strong>tidak benar</strong>. Jenis nilai tidak didukung (array). Silakan lihat <a href="https://developer.wordpress.org/advanced-administration/debug/debug-wordpress/">Debugging di WordPress</a> untuk informasi lebih lanjut. (Pesan ini ditambahkan pada versi 4.8.2.) in /www/wwwroot/tugasin.me/wp-includes/functions.php on line 6121
+[06-Sep-2025 05:28:16 UTC] WordPress database error Table 'sql_tugasin_me.wp_tugasin_nexjob_featured_image_automations' doesn't exist for query SELECT * FROM wp_tugasin_nexjob_featured_image_automations  ORDER BY created_at DESC made by do_action('nexjob-seo_page_nexjob-seo-automations'), WP_Hook->do_action, WP_Hook->apply_filters, NexJob_SEO_Admin->automations_page, NexJob_SEO_Automation_Admin->render_automation_page, NexJob_SEO_Automation_Manager->get_automations
+[06-Sep-2025 05:28:32 UTC] WordPress database error Table 'sql_tugasin_me.wp_tugasin_nexjob_featured_image_automations' doesn't exist for query SELECT * FROM wp_tugasin_nexjob_featured_image_automations  ORDER BY created_at DESC made by do_action('nexjob-seo_page_nexjob-seo-automations'), WP_Hook->do_action, WP_Hook->apply_filters, NexJob_SEO_Admin->automations_page, NexJob_SEO_Automation_Admin->render_automation_page, NexJob_SEO_Automation_Manager->get_automations
+[06-Sep-2025 05:28:36 UTC] WordPress database error Table 'sql_tugasin_me.wp_tugasin_nexjob_featured_image_automations' doesn't exist for query SELECT * FROM wp_tugasin_nexjob_featured_image_automations  ORDER BY created_at DESC made by do_action('nexjob-seo_page_nexjob-seo-automations'), WP_Hook->do_action, WP_Hook->apply_filters, NexJob_SEO_Admin->automations_page, NexJob_SEO_Automation_Admin->render_automation_page, NexJob_SEO_Automation_Manager->get_automations
+[06-Sep-2025 05:34:45 UTC] PHP Notice:  Fungsi wpdb::prepare ditulis secara <strong>tidak benar</strong>. Jenis nilai tidak didukung (array). Silakan lihat <a href="https://developer.wordpress.org/advanced-administration/debug/debug-wordpress/">Debugging di WordPress</a> untuk informasi lebih lanjut. (Pesan ini ditambahkan pada versi 4.8.2.) in /www/wwwroot/tugasin.me/wp-includes/functions.php on line 6121
+[06-Sep-2025 05:34:55 UTC] WordPress database error Table 'sql_tugasin_me.wp_tugasin_nexjob_featured_image_automations' doesn't exist for query SELECT * FROM wp_tugasin_nexjob_featured_image_automations  ORDER BY created_at DESC made by do_action('nexjob-seo_page_nexjob-seo-automations'), WP_Hook->do_action, WP_Hook->apply_filters, NexJob_SEO_Admin->automations_page, NexJob_SEO_Automation_Admin->render_automation_page, NexJob_SEO_Automation_Manager->get_automations
+[06-Sep-2025 05:35:30 UTC] WordPress database error Table 'sql_tugasin_me.wp_tugasin_nexjob_featured_image_automations' doesn't exist for query SELECT * FROM wp_tugasin_nexjob_featured_image_automations  ORDER BY created_at DESC made by do_action('nexjob-seo_page_nexjob-seo-automations'), WP_Hook->do_action, WP_Hook->apply_filters, NexJob_SEO_Admin->automations_page, NexJob_SEO_Automation_Admin->render_automation_page, NexJob_SEO_Automation_Manager->get_automations
+[06-Sep-2025 05:44:13 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:44:15 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:44:16 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:44:22 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:44:27 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:44:32 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:44:37 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:44:38 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:44:38 UTC] WordPress database error Table 'sql_tugasin_me.wp_tugasin_nexjob_featured_image_automations' doesn't exist for query SELECT * FROM wp_tugasin_nexjob_featured_image_automations  ORDER BY created_at DESC made by do_action('nexjob-seo_page_nexjob-seo-automations'), WP_Hook->do_action, WP_Hook->apply_filters, NexJob_SEO_Admin->automations_page, NexJob_SEO_Automation_Admin->render_automation_page, NexJob_SEO_Automation_Manager->get_automations
+[06-Sep-2025 05:44:42 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:44:44 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:44:47 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:44:52 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:44:52 UTC] AUTOMATION DEBUG: automation_nonce found in POST
+[06-Sep-2025 05:44:52 UTC] AUTOMATION DEBUG: nonce verified successfully
+[06-Sep-2025 05:44:52 UTC] AUTOMATION DEBUG: calling create_automation with name: n8n
+[06-Sep-2025 05:44:52 UTC] WordPress database error Table 'sql_tugasin_me.wp_tugasin_nexjob_featured_image_automations' doesn't exist for query SHOW FULL COLUMNS FROM `wp_tugasin_nexjob_featured_image_automations` made by do_action('admin_init'), WP_Hook->do_action, WP_Hook->apply_filters, NexJob_SEO_Automation_Admin->handle_automation_admin_actions, NexJob_SEO_Automation_Manager->create_automation
+[06-Sep-2025 05:44:52 UTC] AUTOMATION DEBUG: create_automation result: Array
+(
+    [success] => 
+    [error] => Database insert failed
+)
+
+[06-Sep-2025 05:44:52 UTC] AUTOMATION DEBUG: creation failed
+[06-Sep-2025 05:44:52 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:44:57 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
+[06-Sep-2025 05:45:02 UTC] AUTOMATION DEBUG: handle_automation_admin_actions called
